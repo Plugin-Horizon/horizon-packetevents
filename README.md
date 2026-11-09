@@ -10,8 +10,11 @@ depend on it instead of hooking raw bytes.
 Derived from packetevents (GPL-3.0-or-later). The licence of this mod is therefore GPL-3.0-or-later (see LICENSE);
 the copyright holders are in NOTICE.
 
-**State: written without building the engine (see STATUS.md and GAPS.md).** The packet model is unit-tested
-(`core/`, 81 tests); the glue to Horizon's hooks has not run yet.
+**State: the glue builds against Horizon `1453e0e61` (`cargo build` in `api/`); the packet model is unit-tested
+(`core/`, 81 tests, which `api/` runs too). The glue has not run inside a Horizon server yet (see STATUS.md and GAPS.md).**
+
+Upstream: packetevents (https://github.com/retrooper/packetevents), commit `3e4e42ea9b8f2a6145a35c7fb80b618343266807`,
+GPL-3.0. Horizon pin: `1453e0e614af4b2d04dd0d228a94162b5d459910`.
 
 ## What it gives a mod
 

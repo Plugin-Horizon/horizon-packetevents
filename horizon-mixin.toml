@@ -2,9 +2,9 @@
 id = "packetevents"
 version = "0.1.0"
 
-# The Horizon commit the glue was written against (not built yet: see STATUS.md).
+# The Horizon commit the glue builds against (`cargo build` in api/ passes; see STATUS.md).
 [compatibility]
-horizon_revision = "bc08885276def824e719e18921d8fb27c92c6904"
+horizon_revision = "1453e0e614af4b2d04dd0d228a94162b5d459910"
 
 # A trait mod: every hook goes through horizon_client::mod_api::Hooks, no injections.
 [api]

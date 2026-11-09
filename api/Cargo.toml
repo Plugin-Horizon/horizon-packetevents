@@ -10,5 +10,5 @@ path = "src/lib.rs"
 
 [dependencies]
 # The launcher points these at the Horizon source it builds the game from.
-horizon-client = { git = "https://github.com/horizon-rust/horizon", rev = "bc08885276def824e719e18921d8fb27c92c6904" }
-horizon-protocol = { git = "https://github.com/horizon-rust/horizon", rev = "bc08885276def824e719e18921d8fb27c92c6904" }
+horizon-client = { git = "https://github.com/horizon-rust/horizon", rev = "1453e0e614af4b2d04dd0d228a94162b5d459910" }
+horizon-protocol = { git = "https://github.com/horizon-rust/horizon", rev = "1453e0e614af4b2d04dd0d228a94162b5d459910" }

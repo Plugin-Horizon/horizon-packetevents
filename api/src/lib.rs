@@ -7,14 +7,16 @@
 //! - incoming plugin messages: `Hooks::custom_payload_from_client` (listen-only, see GAPS.md);
 //! - sending a typed packet to one player: not possible yet (GAPS.md, `send_to_player`).
 //!
-//! Written against Horizon a589a3dd9 without building the engine. Lines marked `UNVERIFIED`
+//! Pinned to Horizon 1453e0e61 and built against it. Lines marked `UNVERIFIED`
 //! guess an engine name or signature; they are the first to check when it compiles (STATUS.md).
 
 // The packet model; `core/` builds the same files as a crate of its own.
 #[allow(dead_code)]
 pub mod pe;
 
-use horizon_client::mod_api::{ClientboundPlayPacket, Hooks, Host, TickEvent};
+use horizon_client::mod_api::{
+    ClientboundPlayPacket, CustomPayloadFromClientEvent, Flow, Hooks, Host, ServerPacketEvent, TickEvent,
+};
 use pe::manager::{Outcome, PacketEvents};
 use pe::packet_type::{ConnectionState, PacketType, PlayClient};
 use pe::wrapper::Wrapper;
@@ -68,7 +70,7 @@ impl PacketMod {
 
 impl Hooks for PacketMod {
     fn tick(&self, host: &mut dyn Host, _event: &mut TickEvent) {
-        // UNVERIFIED: `watch_server_packets` is the helper of the `server_packet` fragment
+        // Built against 1453e0e61; not yet run. `watch_server_packets` is the helper of the `server_packet` fragment
         // (`native_watch_server_packets`); until it is called the server sends packets undecoded.
         if !self.watching.swap(true, Ordering::Relaxed) {
             host.watch_server_packets();
@@ -83,42 +85,37 @@ impl Hooks for PacketMod {
     }
 
     /// Every play packet the server is about to send a guest (`native_server_packet`).
-    fn server_packet(&self, player: u128, packet: &mut ClientboundPlayPacket, cancel: &mut bool) {
-        let frame = packet.encode();
+    fn server_packet(&self, event: &mut ServerPacketEvent<'_>) -> Flow {
+        let frame = event.packet.encode();
         let Some((id, body)) = split_frame(&frame) else {
-            return;
+            return Flow::Continue;
         };
         let Some(packet_type) = PacketType::lookup(ConnectionState::Play, true, id) else {
-            return;
+            return Flow::Continue;
         };
-        let user = self.user(player);
+        let user = self.user(event.player);
         match packet_events().dispatch_send(&user, packet_type, body) {
-            Outcome::Unchanged => {}
-            Outcome::Cancelled => *cancel = true,
+            Outcome::Unchanged => Flow::Continue,
+            Outcome::Cancelled => Flow::Cancel,
             // A body that no longer decodes leaves the packet as it was; the listener is at fault.
             Outcome::Changed(new_body) => {
                 if let Ok(changed) = ClientboundPlayPacket::decode(id, &new_body) {
-                    *packet = changed;
+                    *event.packet = changed;
                 }
+                Flow::Continue
             }
         }
     }
 
     /// A plugin channel message from a player (`native_custom_payload_from_client`). Listen-only:
     /// the message reaches the server whatever the listeners say (GAPS.md).
-    fn custom_payload_from_client(
-        &self,
-        _host: &mut dyn Host,
-        player: u128,
-        channel: &str,
-        data: &[u8],
-    ) {
+    fn custom_payload_from_client(&self, _host: &mut dyn Host, event: &mut CustomPayloadFromClientEvent<'_>) {
         let body = PluginMessage {
-            channel: channel.to_owned(),
-            data: data.to_vec(),
+            channel: event.channel.to_owned(),
+            data: event.data.to_vec(),
         }
         .to_body();
-        let user = self.user(player);
+        let user = self.user(event.player);
         let _ = packet_events().dispatch_receive(
             &user,
             PacketType::PlayClient(PlayClient::PLUGIN_MESSAGE),

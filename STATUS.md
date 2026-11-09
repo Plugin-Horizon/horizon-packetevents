@@ -1,9 +1,9 @@
-# Status (2026-11-09, written blind: no engine build yet)
+# Status (2026-11-09)
 
-Legend: **written** = code and rule done, unit-tested where the rule is engine-free; **glue, unbuilt** = written against the
-engine's names but not compiled with Horizon; **not started** = absent (GAPS.md says why).
+Legend: **written** = code and rule done, unit-tested where the rule is engine-free; **glue, built** = compiled against the
+pinned Horizon engine, behaviour not yet run on a server; **not started** = absent (GAPS.md says why).
 
-Base: Horizon `bc08885276def824e719e18921d8fb27c92c6904` (upstream/main on 2026-11-09). The packet enums, the id tables, `encode`/`decode`
+Base: Horizon `1453e0e614af4b2d04dd0d228a94162b5d459910` (upstream/main on 2026-11-09; was `bc08885276` before the repin). The packet enums, the id tables, `encode`/`decode`
 and the packet hook fragments were read at that commit (play, configuration and login protocol files unchanged since 6bab737cae).
 
 ## Tests

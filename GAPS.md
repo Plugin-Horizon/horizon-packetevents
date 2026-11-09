@@ -1,6 +1,6 @@
 # What Horizon is missing for this mod
 
-Checked against Horizon bc08885276def824e719e18921d8fb27c92c6904 (upstream/main, 2026-11-09). Each entry: what the mod
+Checked against Horizon 1453e0e614af4b2d04dd0d228a94162b5d459910 (upstream/main, 2026-11-09; the glue compiles against it). Each entry: what the mod
 would need, which feature it serves, and what the mod does today. Proposed signatures follow the conventions of
 docs/native-mods.md; they are suggestions for the engine side, not a request for a particular name.
 
@@ -40,8 +40,7 @@ docs/native-mods.md; they are suggestions for the engine side, not a request for
   (`native_send_custom_payload_to_player`) reaches a vanilla client but can carry only data the mod encodes itself.
 
 - [ ] **`watch_server_packets` on the mod's `Host`.** The fragment `server_packet` names the helper
-  `native_watch_server_packets` (native_packets.rs). The glue calls `host.watch_server_packets()` (UNVERIFIED: the
-  `Host` method name). Feature: `server_packet` heard at all. Today: nothing is heard until the glue's first tick
+  `native_watch_server_packets` (native_packets.rs). The glue calls `host.watch_server_packets()` (compiles at 1453e0e61). Feature: `server_packet` heard at all. Today: nothing is heard until the glue's first tick
   calls it. If `Host` has no such method, a `Hooks` method would be the way to switch it on.
 
 - [ ] **Per-packet switching for `server_packet`.** Once the watch is on, every play packet to every guest is
@@ -62,7 +61,7 @@ docs/native-mods.md; they are suggestions for the engine side, not a request for
   hook above exists.
 
 - [ ] **`Slot` and `Particle` readers as public codecs.** The glue calls `horizon_protocol::item::Slot` and
-  `horizon_protocol::entity_data::Particle::read` to measure items and particles (UNVERIFIED that both are public
+  `horizon_protocol::entity_data::Particle::read` to measure items and particles (compiles at 1453e0e61, so both are public
   paths of the crate). Proposed: the same names exported from `horizon_protocol`. Feature: exact lengths of item stacks
   with components. Today: the glue calls them as written; a path that is not public stops the build, not the server.
 
