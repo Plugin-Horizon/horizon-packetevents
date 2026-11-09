@@ -1,0 +1,13 @@
+# The engine-free packet API, built and tested on its own: `cd core && cargo test`.
+# Its source is api/src/pe/, which src/lib.rs includes as a module.
+[package]
+name = "horizon-packetevents-core"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]

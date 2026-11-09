@@ -1,0 +1,16 @@
+horizon-packetevents
+
+This mod is derived from packetevents (https://github.com/retrooper/packetevents), a packet API for
+Minecraft, and is distributed under the GNU General Public License version 3 or (at your option) any
+later version (see LICENSE).
+
+Copyright (C) 2026 retrooper and contributors (packetevents)
+Copyright (C) Plugin-Horizon contributors (the port to Horizon)
+
+The packet types, the listener model (`PacketEvent`, `PacketListener`, `PacketListenerPriority`,
+the send and receive events, `markForReEncode`, cancellation), the wrapper structure and the wrapper
+names follow packetevents' API. Its source is GPL-3.0-or-later; the port is distributed under the same
+terms. Nothing of Horizon's source is included; the wire layouts are those of Minecraft 26.3 as Horizon's
+protocol crate states them.
+
+Not affiliated with packetevents, retrooper or the packetevents contributors, nor with Mojang or Microsoft.
