@@ -27,9 +27,16 @@ impl Priority {
     }
 
     pub fn from_id(id: u8) -> Option<Priority> {
-        [Priority::Lowest, Priority::Low, Priority::Normal, Priority::High, Priority::Highest, Priority::Monitor]
-            .get(id as usize)
-            .copied()
+        [
+            Priority::Lowest,
+            Priority::Low,
+            Priority::Normal,
+            Priority::High,
+            Priority::Highest,
+            Priority::Monitor,
+        ]
+        .get(id as usize)
+        .copied()
     }
 }
 
@@ -54,7 +61,13 @@ pub struct PacketEvent {
 impl PacketEvent {
     /// A new event for a packet body (the bytes after the id).
     pub fn new(packet_type: PacketType, user: User, body: Vec<u8>) -> PacketEvent {
-        PacketEvent { packet_type, user, body, cancelled: false, reencode: false }
+        PacketEvent {
+            packet_type,
+            user,
+            body,
+            cancelled: false,
+            reencode: false,
+        }
     }
 
     pub fn packet_type(&self) -> PacketType {

@@ -83,7 +83,9 @@ pub fn basic_item_len(data: &[u8]) -> Result<usize> {
     let added = r.varint()?;
     let removed = r.varint()?;
     if added != 0 || removed != 0 {
-        return Err(Error::new("item components need the item codec of the registry"));
+        return Err(Error::new(
+            "item components need the item codec of the registry",
+        ));
     }
     Ok(r.position())
 }
@@ -93,20 +95,20 @@ pub fn basic_item_len(data: &[u8]) -> Result<usize> {
 pub fn fixed_entity_value_len(serializer: i32, data: &[u8]) -> Result<usize> {
     let mut r = Reader::new(data);
     match serializer {
-        0 | 8 => r.skip(1)?,                   // byte, boolean
+        0 | 8 => r.skip(1)?,                                   // byte, boolean
         1 | 12 | 14 | 15 | 19 | 20 => r.varint().map(|_| ())?, // int, direction, block states, optional uint, pose
-        2 => r.varlong().map(|_| ())?,         // long
-        3 => r.skip(4)?,                       // float
-        4 => r.string(32767).map(|_| ())?,     // string
-        5 => r.nbt_raw()?,                     // component
+        2 => r.varlong().map(|_| ())?,                         // long
+        3 => r.skip(4)?,                                       // float
+        4 => r.string(32767).map(|_| ())?,                     // string
+        5 => r.nbt_raw()?,                                     // component
         6 => {
             if r.bool()? {
                 r.nbt_raw()?;
             }
         }
-        9 | 39 => r.skip(12)?,                 // rotations, vector3
-        40 => r.skip(16)?,                     // quaternion
-        10 => r.skip(8)?,                      // block pos
+        9 | 39 => r.skip(12)?, // rotations, vector3
+        40 => r.skip(16)?,     // quaternion
+        10 => r.skip(8)?,      // block pos
         11 => {
             if r.bool()? {
                 r.skip(8)?;
@@ -115,7 +117,7 @@ pub fn fixed_entity_value_len(serializer: i32, data: &[u8]) -> Result<usize> {
         18 => {
             r.varint()?;
             r.varint()?;
-            r.varint()?;                       // villager data
+            r.varint()?; // villager data
         }
         _ => {
             return Err(Error::new(format!(
@@ -265,7 +267,9 @@ impl<'a> Reader<'a> {
     pub fn string(&mut self, max: usize) -> Result<String> {
         let len = self.varint()?;
         if len < 0 || len as usize > max * 3 {
-            return Err(Error::new(format!("string length {len} is past {max} characters")));
+            return Err(Error::new(format!(
+                "string length {len} is past {max} characters"
+            )));
         }
         let bytes = self.take(len as usize)?;
         let s = std::str::from_utf8(bytes).map_err(|_| Error::new("string is not UTF-8"))?;
@@ -439,7 +443,13 @@ impl Writer {
 
     /// `LpVec3`, quantized as the game does (the largest component sets the scale).
     pub fn lp_vec3(&mut self, v: [f64; 3]) {
-        let v = v.map(|c| if c.is_nan() { 0.0 } else { c.clamp(-1.717_986_918_3e10, 1.717_986_918_3e10) });
+        let v = v.map(|c| {
+            if c.is_nan() {
+                0.0
+            } else {
+                c.clamp(-1.717_986_918_3e10, 1.717_986_918_3e10)
+            }
+        });
         let length = v[0].abs().max(v[1].abs()).max(v[2].abs());
         if length < 3.051_944_088_384_301e-5 {
             self.u8(0);
@@ -463,22 +473,34 @@ impl Writer {
 
 /// Packs a block position (`BlockPos.asLong`).
 pub fn pack_block_pos(p: [i32; 3]) -> i64 {
-    ((i64::from(p[0]) & 0x3FF_FFFF) << 38) | ((i64::from(p[2]) & 0x3FF_FFFF) << 12) | (i64::from(p[1]) & 0xFFF)
+    ((i64::from(p[0]) & 0x3FF_FFFF) << 38)
+        | ((i64::from(p[2]) & 0x3FF_FFFF) << 12)
+        | (i64::from(p[1]) & 0xFFF)
 }
 
 /// Unpacks a block position (`BlockPos.of`).
 pub fn unpack_block_pos(v: i64) -> [i32; 3] {
-    [(v >> 38) as i32, (v << 52 >> 52) as i32, (v << 26 >> 38) as i32]
+    [
+        (v >> 38) as i32,
+        (v << 52 >> 52) as i32,
+        (v << 26 >> 38) as i32,
+    ]
 }
 
 /// Packs a section position: x (22 bits), z (22 bits), y (20 bits).
 pub fn pack_section_pos(p: [i32; 3]) -> i64 {
-    ((i64::from(p[0]) & 0x3F_FFFF) << 42) | ((i64::from(p[2]) & 0x3F_FFFF) << 20) | (i64::from(p[1]) & 0xF_FFFF)
+    ((i64::from(p[0]) & 0x3F_FFFF) << 42)
+        | ((i64::from(p[2]) & 0x3F_FFFF) << 20)
+        | (i64::from(p[1]) & 0xF_FFFF)
 }
 
 /// Unpacks a section position.
 pub fn unpack_section_pos(v: i64) -> [i32; 3] {
-    [(v >> 42) as i32, (v << 44 >> 44) as i32, (v << 22 >> 42) as i32]
+    [
+        (v >> 42) as i32,
+        (v << 44 >> 44) as i32,
+        (v << 22 >> 42) as i32,
+    ]
 }
 
 fn unpack_lp(v: u64) -> f64 {

@@ -117,8 +117,14 @@ impl EntityDataEntry {
 
     /// The value of a float (serializer 3).
     pub fn as_float(&self) -> Option<f32> {
-        (self.serializer == 3 && self.value.len() == 4)
-            .then(|| f32::from_bits(u32::from_be_bytes([self.value[0], self.value[1], self.value[2], self.value[3]])))
+        (self.serializer == 3 && self.value.len() == 4).then(|| {
+            f32::from_bits(u32::from_be_bytes([
+                self.value[0],
+                self.value[1],
+                self.value[2],
+                self.value[3],
+            ]))
+        })
     }
 }
 
@@ -156,7 +162,11 @@ pub(crate) fn write_entity_data(w: &mut Writer, entries: &[EntityDataEntry]) {
 }
 
 /// A VarInt-prefixed list of `T`s, each read by `f`.
-pub(crate) fn read_list<T>(r: &mut Reader, max: usize, mut f: impl FnMut(&mut Reader) -> Result<T>) -> Result<Vec<T>> {
+pub(crate) fn read_list<T>(
+    r: &mut Reader,
+    max: usize,
+    mut f: impl FnMut(&mut Reader) -> Result<T>,
+) -> Result<Vec<T>> {
     let n = r.count(max)?;
     let mut out = Vec::with_capacity(n.min(256));
     for _ in 0..n {
@@ -166,7 +176,10 @@ pub(crate) fn read_list<T>(r: &mut Reader, max: usize, mut f: impl FnMut(&mut Re
 }
 
 /// A boolean followed, when true, by a value.
-pub(crate) fn read_opt<T>(r: &mut Reader, f: impl FnOnce(&mut Reader) -> Result<T>) -> Result<Option<T>> {
+pub(crate) fn read_opt<T>(
+    r: &mut Reader,
+    f: impl FnOnce(&mut Reader) -> Result<T>,
+) -> Result<Option<T>> {
     if r.bool()? { f(r).map(Some) } else { Ok(None) }
 }
 

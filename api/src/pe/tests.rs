@@ -1,14 +1,23 @@
 //! Tests of the engine-free packet API: codec, NBT, the packet tables, every wrapper round trip,
 //! and the listener dispatch.
 
-use super::codec::{BasicRegistry, Error, Reader, Registry, Writer, basic_item_len, pack_block_pos, pack_section_pos, unpack_block_pos, unpack_section_pos};
+use super::codec::{
+    BasicRegistry, Error, Reader, Registry, Writer, basic_item_len, pack_block_pos,
+    pack_section_pos, unpack_block_pos, unpack_section_pos,
+};
 use super::event::{PacketEvent, PacketListener, Priority, User};
 use super::manager::{Outcome, PacketEvents};
 use super::nbt::Tag;
-use super::packet_type::{ConnectionState, LoginClient, LoginServer, PacketType, PlayClient, PlayServer};
+use super::packet_type::{
+    ConnectionState, LoginClient, LoginServer, PacketType, PlayClient, PlayServer,
+};
 use super::wrapper::clientbound::*;
 use super::wrapper::serverbound as sb;
-use super::wrapper::serverbound::{AttackEntity, Animation, BlockPlace, ClientSettings, HeldItemChange, InteractEntity, PlayerDigging, PlayerFlying, PlayerPosition, PlayerPositionAndRotation, PlayerRotation, ResourcePackStatus, TabComplete};
+use super::wrapper::serverbound::{
+    Animation, AttackEntity, BlockPlace, ClientSettings, HeldItemChange, InteractEntity,
+    PlayerDigging, PlayerFlying, PlayerPosition, PlayerPositionAndRotation, PlayerRotation,
+    ResourcePackStatus, TabComplete,
+};
 use super::wrapper::{EntityDataEntry, RawItem, RawParticle, Wrapper};
 use std::sync::{Arc, Mutex};
 
@@ -31,7 +40,9 @@ impl Registry for TestRegistry {
         let added = r.varint()?;
         let removed = r.varint()?;
         if removed != 0 {
-            return Err(Error::new("test registry: removed components are not modelled"));
+            return Err(Error::new(
+                "test registry: removed components are not modelled",
+            ));
         }
         r.skip(added as usize)?;
         Ok(r.position())
@@ -63,7 +74,11 @@ fn quantise(v: [f64; 3]) -> [f64; 3] {
 }
 
 fn user() -> User {
-    User { uuid: 0x1234_5678_9abc_def0_0fed_cba9_8765_4321, name: "player".into(), state: ConnectionState::Play }
+    User {
+        uuid: 0x1234_5678_9abc_def0_0fed_cba9_8765_4321,
+        name: "player".into(),
+        state: ConnectionState::Play,
+    }
 }
 
 fn tag_text(s: &str) -> Tag {
@@ -75,7 +90,16 @@ fn nbt_compound() -> Tag {
         ("text".into(), Tag::String("hi".into())),
         ("color".into(), Tag::String("red".into())),
         ("bold".into(), Tag::Byte(1)),
-        ("extra".into(), Tag::List(10, vec![Tag::Compound(vec![("text".into(), Tag::String("x".into()))])])),
+        (
+            "extra".into(),
+            Tag::List(
+                10,
+                vec![Tag::Compound(vec![(
+                    "text".into(),
+                    Tag::String("x".into()),
+                )])],
+            ),
+        ),
         ("ints".into(), Tag::IntArray(vec![1, -2, 3])),
         ("longs".into(), Tag::LongArray(vec![i64::MIN, 0, i64::MAX])),
         ("bytes".into(), Tag::ByteArray(vec![-1, 0, 127])),
@@ -90,7 +114,18 @@ fn nbt_compound() -> Tag {
 
 #[test]
 fn varint_round_trips_the_edges() {
-    for v in [0, 1, 127, 128, 255, 25_565, 2_097_151, 2_147_483_647, -1, -2_147_483_648] {
+    for v in [
+        0,
+        1,
+        127,
+        128,
+        255,
+        25_565,
+        2_097_151,
+        2_147_483_647,
+        -1,
+        -2_147_483_648,
+    ] {
         let mut w = Writer::new();
         w.varint(v);
         let mut r = Reader::new(&w.data);
@@ -179,7 +214,12 @@ fn a_string_cut_short_is_an_error() {
 fn block_positions_pack_as_the_game_does() {
     // BlockPos.asLong(1, 2, 3): x in the top bits, then z, then y in the low 12 bits.
     assert_eq!(pack_block_pos([1, 2, 3]), (1i64 << 38) | (3i64 << 12) | 2);
-    for p in [[0, 0, 0], [-1, -64, -1], [30_000_000, 2047, -30_000_000], [-30_000_000, -2048, 5]] {
+    for p in [
+        [0, 0, 0],
+        [-1, -64, -1],
+        [30_000_000, 2047, -30_000_000],
+        [-30_000_000, -2048, 5],
+    ] {
         let packed = pack_block_pos(p);
         assert_eq!(unpack_block_pos(packed), p, "position {p:?}");
     }
@@ -202,13 +242,23 @@ fn lp_vec3_zero_is_one_byte() {
 
 #[test]
 fn lp_vec3_keeps_direction_and_magnitude_within_quantisation() {
-    for v in [[0.5, -0.25, 0.1], [1.0, 0.0, 0.0], [12.5, -7.0, 3.25], [-2000.0, 1000.0, 0.5]] {
+    for v in [
+        [0.5, -0.25, 0.1],
+        [1.0, 0.0, 0.0],
+        [12.5, -7.0, 3.25],
+        [-2000.0, 1000.0, 0.5],
+    ] {
         let mut w = Writer::new();
         w.lp_vec3(v);
         let back = Reader::new(&w.data).lp_vec3().unwrap();
         let scale = v.iter().fold(0.0f64, |m, c| m.max(c.abs())).ceil();
         for i in 0..3 {
-            assert!((back[i] - v[i]).abs() <= scale / 16_000.0 + 1e-9, "axis {i}: {} vs {}", back[i], v[i]);
+            assert!(
+                (back[i] - v[i]).abs() <= scale / 16_000.0 + 1e-9,
+                "axis {i}: {} vs {}",
+                back[i],
+                v[i]
+            );
         }
     }
 }
@@ -258,7 +308,10 @@ fn nbt_plain_text_is_a_string_root() {
 fn nbt_plain_text_reads_a_text_compound() {
     let tag = Tag::Compound(vec![("text".into(), Tag::String("x".into()))]);
     assert_eq!(tag.plain_text(), Some("x"));
-    let styled = Tag::Compound(vec![("text".into(), Tag::String("x".into())), ("bold".into(), Tag::Byte(1))]);
+    let styled = Tag::Compound(vec![
+        ("text".into(), Tag::String("x".into())),
+        ("bold".into(), Tag::Byte(1)),
+    ]);
     assert_eq!(styled.plain_text(), None);
 }
 
@@ -330,7 +383,11 @@ fn fixed_entity_serializers_are_measured() {
     assert_eq!(reg.entity_value_len(3, &[0; 4]).unwrap(), 4); // float
     assert_eq!(reg.entity_value_len(9, &[0; 12]).unwrap(), 12); // rotations
     assert_eq!(reg.entity_value_len(11, &[0]).unwrap(), 1); // absent optional block pos
-    assert_eq!(reg.entity_value_len(11, &[1, 0, 0, 0, 0, 0, 0, 0, 0]).unwrap(), 9);
+    assert_eq!(
+        reg.entity_value_len(11, &[1, 0, 0, 0, 0, 0, 0, 0, 0])
+            .unwrap(),
+        9
+    );
     assert!(reg.entity_value_len(7, &[0]).is_err()); // item stacks need the registry
 }
 
@@ -382,7 +439,11 @@ fn ids_are_dense_from_zero() {
 fn login_and_configuration_tables_match_horizon() {
     assert_eq!(LoginServer::from_id(1), Some(LoginServer::HELLO));
     assert!(LoginClient::from_id(0).is_some());
-    assert!(LoginServer::ALL.iter().all(|p| p.name() == p.name().to_lowercase()));
+    assert!(
+        LoginServer::ALL
+            .iter()
+            .all(|p| p.name() == p.name().to_lowercase())
+    );
 }
 
 #[test]
@@ -395,10 +456,16 @@ fn packet_type_lookup_uses_state_and_side() {
         PacketType::lookup(ConnectionState::Play, false, 66),
         Some(PacketType::PlayClient(PlayClient::PLAYER_BLOCK_PLACEMENT))
     );
-    assert_eq!(PacketType::lookup(ConnectionState::Handshaking, true, 0), None);
+    assert_eq!(
+        PacketType::lookup(ConnectionState::Handshaking, true, 0),
+        None
+    );
     assert!(PacketType::PlayServer(PlayServer::KEEP_ALIVE).is_server_side());
     assert!(!PacketType::PlayClient(PlayClient::KEEP_ALIVE).is_server_side());
-    assert_eq!(PacketType::PlayClient(PlayClient::KEEP_ALIVE).state(), ConnectionState::Play);
+    assert_eq!(
+        PacketType::PlayClient(PlayClient::KEEP_ALIVE).state(),
+        ConnectionState::Play
+    );
 }
 
 // Wrappers: round trips ------------------------------------------------------------------------
@@ -406,9 +473,15 @@ fn packet_type_lookup_uses_state_and_side() {
 /// Writes a wrapper, reads it back with the test registry and checks it is equal.
 fn round_trip<W: Wrapper + PartialEq + std::fmt::Debug>(value: W) {
     let body = value.to_body();
-    let back = W::from_body(&body, &TestRegistry).unwrap_or_else(|e| panic!("{}: {e}", W::TYPE.name()));
+    let back =
+        W::from_body(&body, &TestRegistry).unwrap_or_else(|e| panic!("{}: {e}", W::TYPE.name()));
     assert_eq!(back, value, "{}", W::TYPE.name());
-    assert_eq!(back.to_body(), body, "{} re-encodes to the same bytes", W::TYPE.name());
+    assert_eq!(
+        back.to_body(),
+        body,
+        "{} re-encodes to the same bytes",
+        W::TYPE.name()
+    );
 }
 
 fn sample_chat() -> ChatMessage {
@@ -443,22 +516,38 @@ fn chat_message_round_trips_with_signatures_and_filters() {
 
 #[test]
 fn system_chat_round_trips_both_targets() {
-    round_trip(SystemChatMessage { content: nbt_compound(), overlay: false });
-    round_trip(SystemChatMessage { content: tag_text("bar"), overlay: true });
+    round_trip(SystemChatMessage {
+        content: nbt_compound(),
+        overlay: false,
+    });
+    round_trip(SystemChatMessage {
+        content: tag_text("bar"),
+        overlay: true,
+    });
 }
 
 #[test]
 fn title_wrappers_round_trip() {
-    round_trip(SetTitleText { text: tag_text("Title") });
-    round_trip(SetTitleSubtitle { text: nbt_compound() });
-    round_trip(SetTitleTimes { fade_in: 10, stay: 70, fade_out: -1 });
+    round_trip(SetTitleText {
+        text: tag_text("Title"),
+    });
+    round_trip(SetTitleSubtitle {
+        text: nbt_compound(),
+    });
+    round_trip(SetTitleTimes {
+        fade_in: 10,
+        stay: 70,
+        fade_out: -1,
+    });
     round_trip(ClearTitles { reset: true });
     round_trip(ClearTitles { reset: false });
 }
 
 #[test]
 fn action_bar_round_trips() {
-    round_trip(ActionBar { text: tag_text("Health 20") });
+    round_trip(ActionBar {
+        text: tag_text("Health 20"),
+    });
 }
 
 #[test]
@@ -477,8 +566,15 @@ fn boss_bar_round_trips_every_action() {
         BossBarAction::Remove,
         BossBarAction::UpdateProgress(0.25),
         BossBarAction::UpdateName(nbt_compound()),
-        BossBarAction::UpdateStyle { color: 5, overlay: 0 },
-        BossBarAction::UpdateFlags { darken_sky: false, play_music: true, create_fog: true },
+        BossBarAction::UpdateStyle {
+            color: 5,
+            overlay: 0,
+        },
+        BossBarAction::UpdateFlags {
+            darken_sky: false,
+            play_music: true,
+            create_fog: true,
+        },
     ];
     for action in actions {
         round_trip(BossBar { uuid: id, action });
@@ -488,13 +584,36 @@ fn boss_bar_round_trips_every_action() {
 #[test]
 fn entity_metadata_round_trips_known_serializers_and_a_registry_one() {
     let values = vec![
-        EntityDataEntry { index: 0, serializer: 0, value: vec![0x40] },
-        EntityDataEntry { index: 1, serializer: 1, value: vec![0x80, 0x01] },
-        EntityDataEntry { index: 2, serializer: 3, value: 1.5f32.to_be_bytes().to_vec() },
-        EntityDataEntry { index: 3, serializer: 8, value: vec![1] },
-        EntityDataEntry { index: 4, serializer: 50, value: vec![0xAB, 0xCD] },
+        EntityDataEntry {
+            index: 0,
+            serializer: 0,
+            value: vec![0x40],
+        },
+        EntityDataEntry {
+            index: 1,
+            serializer: 1,
+            value: vec![0x80, 0x01],
+        },
+        EntityDataEntry {
+            index: 2,
+            serializer: 3,
+            value: 1.5f32.to_be_bytes().to_vec(),
+        },
+        EntityDataEntry {
+            index: 3,
+            serializer: 8,
+            value: vec![1],
+        },
+        EntityDataEntry {
+            index: 4,
+            serializer: 50,
+            value: vec![0xAB, 0xCD],
+        },
     ];
-    round_trip(EntityMetadata { entity_id: 12, values: values.clone() });
+    round_trip(EntityMetadata {
+        entity_id: 12,
+        values: values.clone(),
+    });
     let entry = &values[1];
     assert_eq!(entry.as_varint(), Some(128));
     assert_eq!(values[0].as_byte(), Some(0x40));
@@ -504,8 +623,15 @@ fn entity_metadata_round_trips_known_serializers_and_a_registry_one() {
 
 #[test]
 fn entity_metadata_without_values_is_just_the_end_marker() {
-    round_trip(EntityMetadata { entity_id: 3, values: Vec::new() });
-    let body = EntityMetadata { entity_id: 3, values: Vec::new() }.to_body();
+    round_trip(EntityMetadata {
+        entity_id: 3,
+        values: Vec::new(),
+    });
+    let body = EntityMetadata {
+        entity_id: 3,
+        values: Vec::new(),
+    }
+    .to_body();
     assert_eq!(body, [3, 0xFF]);
 }
 
@@ -546,7 +672,10 @@ fn entity_teleport_round_trips() {
 
 #[test]
 fn block_change_round_trips() {
-    round_trip(BlockChange { position: [-100, 64, 200], state: 1234 });
+    round_trip(BlockChange {
+        position: [-100, 64, 200],
+        state: 1234,
+    });
 }
 
 #[test]
@@ -568,7 +697,11 @@ fn sample_entry(uuid: u128) -> PlayerInfoEntry {
     PlayerInfoEntry {
         uuid,
         name: Some("name".into()),
-        properties: vec![Property { name: "textures".into(), value: "e30=".into(), signature: Some("sig".into()) }],
+        properties: vec![Property {
+            name: "textures".into(),
+            value: "e30=".into(),
+            signature: Some("sig".into()),
+        }],
         chat_session: Some((5, 99, vec![1, 2], vec![3])),
         game_mode: Some(1),
         listed: Some(true),
@@ -581,24 +714,47 @@ fn sample_entry(uuid: u128) -> PlayerInfoEntry {
 
 #[test]
 fn player_info_update_round_trips_every_action() {
-    round_trip(PlayerInfoUpdate { actions: 255, entries: vec![sample_entry(1), sample_entry(2)] });
+    round_trip(PlayerInfoUpdate {
+        actions: 255,
+        entries: vec![sample_entry(1), sample_entry(2)],
+    });
     // Only latency: the other fields stay absent.
-    let latency = PlayerInfoEntry { uuid: 3, latency: Some(20), ..PlayerInfoEntry::default() };
-    round_trip(PlayerInfoUpdate { actions: 16, entries: vec![latency] });
+    let latency = PlayerInfoEntry {
+        uuid: 3,
+        latency: Some(20),
+        ..PlayerInfoEntry::default()
+    };
+    round_trip(PlayerInfoUpdate {
+        actions: 16,
+        entries: vec![latency],
+    });
     // A display name cleared.
-    let cleared = PlayerInfoEntry { uuid: 4, display_name: Some(None), ..PlayerInfoEntry::default() };
-    round_trip(PlayerInfoUpdate { actions: 32, entries: vec![cleared] });
+    let cleared = PlayerInfoEntry {
+        uuid: 4,
+        display_name: Some(None),
+        ..PlayerInfoEntry::default()
+    };
+    round_trip(PlayerInfoUpdate {
+        actions: 32,
+        entries: vec![cleared],
+    });
 }
 
 #[test]
 fn player_info_remove_round_trips() {
-    round_trip(PlayerInfoRemove { uuids: vec![1, 2, u128::MAX] });
+    round_trip(PlayerInfoRemove {
+        uuids: vec![1, 2, u128::MAX],
+    });
     round_trip(PlayerInfoRemove { uuids: Vec::new() });
 }
 
 #[test]
 fn scoreboard_objective_round_trips_each_method() {
-    round_trip(ScoreboardObjective { name: "sb".into(), method: 1, display: None });
+    round_trip(ScoreboardObjective {
+        name: "sb".into(),
+        method: 1,
+        display: None,
+    });
     round_trip(ScoreboardObjective {
         name: "sb".into(),
         method: 0,
@@ -640,17 +796,55 @@ fn teams_round_trip_each_method() {
         color: Some(12),
         options: 3,
     };
-    round_trip(Teams { name: "red".into(), method: 0, parameters: Some(params.clone()), players: vec!["a".into(), "b".into()] });
-    round_trip(Teams { name: "red".into(), method: 1, parameters: None, players: Vec::new() });
-    round_trip(Teams { name: "red".into(), method: 2, parameters: Some(TeamParameters { color: None, ..params }), players: Vec::new() });
-    round_trip(Teams { name: "red".into(), method: 3, parameters: None, players: vec!["c".into()] });
-    round_trip(Teams { name: "red".into(), method: 4, parameters: None, players: vec!["c".into()] });
+    round_trip(Teams {
+        name: "red".into(),
+        method: 0,
+        parameters: Some(params.clone()),
+        players: vec!["a".into(), "b".into()],
+    });
+    round_trip(Teams {
+        name: "red".into(),
+        method: 1,
+        parameters: None,
+        players: Vec::new(),
+    });
+    round_trip(Teams {
+        name: "red".into(),
+        method: 2,
+        parameters: Some(TeamParameters {
+            color: None,
+            ..params
+        }),
+        players: Vec::new(),
+    });
+    round_trip(Teams {
+        name: "red".into(),
+        method: 3,
+        parameters: None,
+        players: vec!["c".into()],
+    });
+    round_trip(Teams {
+        name: "red".into(),
+        method: 4,
+        parameters: None,
+        players: vec!["c".into()],
+    });
 }
 
 #[test]
 fn set_slot_round_trips_items_and_keeps_their_bytes() {
-    round_trip(SetSlot { window_id: 0, state_id: 5, slot: 36, item: RawItem::empty() });
-    round_trip(SetSlot { window_id: 2, state_id: 1, slot: 0, item: RawItem::simple(64, 1000) });
+    round_trip(SetSlot {
+        window_id: 0,
+        state_id: 5,
+        slot: 36,
+        item: RawItem::empty(),
+    });
+    round_trip(SetSlot {
+        window_id: 2,
+        state_id: 1,
+        slot: 0,
+        item: RawItem::simple(64, 1000),
+    });
     // A stack with a registry-sized component: the test registry reads one byte for it.
     let mut w = Writer::new();
     w.varint(3);
@@ -659,7 +853,12 @@ fn set_slot_round_trips_items_and_keeps_their_bytes() {
     w.varint(0);
     w.u8(0xEE);
     let item = RawItem(w.data.clone());
-    round_trip(SetSlot { window_id: 1, state_id: 2, slot: 3, item: item.clone() });
+    round_trip(SetSlot {
+        window_id: 1,
+        state_id: 2,
+        slot: 3,
+        item: item.clone(),
+    });
     assert_eq!(item.count(), Some(3));
     assert!(!item.is_empty());
     assert!(RawItem::empty().is_empty());
@@ -686,15 +885,28 @@ fn window_items_round_trip_with_the_cursor_item() {
     round_trip(WindowItems {
         window_id: 0,
         state_id: 9,
-        items: vec![RawItem::empty(), RawItem::simple(1, 1), RawItem::simple(16, 2)],
+        items: vec![
+            RawItem::empty(),
+            RawItem::simple(1, 1),
+            RawItem::simple(16, 2),
+        ],
         carried: RawItem::simple(2, 3),
     });
-    round_trip(WindowItems { window_id: 3, state_id: 0, items: Vec::new(), carried: RawItem::empty() });
+    round_trip(WindowItems {
+        window_id: 3,
+        state_id: 0,
+        items: Vec::new(),
+        carried: RawItem::empty(),
+    });
 }
 
 #[test]
 fn open_window_round_trips() {
-    round_trip(OpenWindow { window_id: 4, menu: 9, title: nbt_compound() });
+    round_trip(OpenWindow {
+        window_id: 4,
+        menu: 9,
+        title: nbt_compound(),
+    });
 }
 
 #[test]
@@ -763,7 +975,10 @@ fn sound_effect_round_trips_registry_and_inline_sounds() {
         seed: 99,
     });
     round_trip(SoundEffect {
-        sound: SoundRef::Inline { name: "minecraft:ambient.cave".into(), range: Some(16.0) },
+        sound: SoundRef::Inline {
+            name: "minecraft:ambient.cave".into(),
+            range: Some(16.0),
+        },
         source: 0,
         x: 0,
         y: 0,
@@ -773,28 +988,49 @@ fn sound_effect_round_trips_registry_and_inline_sounds() {
         seed: -1,
     });
     round_trip(EntitySoundEffect {
-        sound: SoundRef::Inline { name: "mod:thing".into(), range: None },
+        sound: SoundRef::Inline {
+            name: "mod:thing".into(),
+            range: None,
+        },
         source: 1,
         entity_id: 44,
         volume: 2.0,
         pitch: 1.5,
         seed: 0,
     });
-    round_trip(EntitySoundEffect { sound: SoundRef::Registry(0), source: 4, entity_id: 1, volume: 1.0, pitch: 1.0, seed: 3 });
+    round_trip(EntitySoundEffect {
+        sound: SoundRef::Registry(0),
+        source: 4,
+        entity_id: 1,
+        volume: 1.0,
+        pitch: 1.0,
+        seed: 3,
+    });
 }
 
 #[test]
 fn keep_alive_round_trips_and_is_eight_bytes() {
-    round_trip(KeepAlive { id: 1_234_567_890_123 });
+    round_trip(KeepAlive {
+        id: 1_234_567_890_123,
+    });
     assert_eq!(KeepAlive { id: 1 }.to_body(), [0, 0, 0, 0, 0, 0, 0, 1]);
     round_trip(sb::KeepAlive { id: -9 });
 }
 
 #[test]
 fn plugin_message_keeps_the_data_to_the_end() {
-    round_trip(PluginMessage { channel: "minecraft:brand".into(), data: b"vanilla".to_vec() });
-    round_trip(PluginMessage { channel: "voicechat:x".into(), data: Vec::new() });
-    round_trip(sb::PluginMessage { channel: "a:b".into(), data: vec![0xFF; 10] });
+    round_trip(PluginMessage {
+        channel: "minecraft:brand".into(),
+        data: b"vanilla".to_vec(),
+    });
+    round_trip(PluginMessage {
+        channel: "voicechat:x".into(),
+        data: Vec::new(),
+    });
+    round_trip(sb::PluginMessage {
+        channel: "a:b".into(),
+        data: vec![0xFF; 10],
+    });
 }
 
 #[test]
@@ -813,8 +1049,18 @@ fn resource_packs_round_trip() {
 
 #[test]
 fn interact_entity_round_trips_its_point() {
-    round_trip(InteractEntity { entity_id: 9, hand: 0, location: [0.0, 0.0, 0.0], sneaking: false });
-    round_trip(InteractEntity { entity_id: 9, hand: 1, location: quantise([0.25, 1.0, -0.5]), sneaking: true });
+    round_trip(InteractEntity {
+        entity_id: 9,
+        hand: 0,
+        location: [0.0, 0.0, 0.0],
+        sneaking: false,
+    });
+    round_trip(InteractEntity {
+        entity_id: 9,
+        hand: 1,
+        location: quantise([0.25, 1.0, -0.5]),
+        sneaking: true,
+    });
 }
 
 #[test]
@@ -824,15 +1070,32 @@ fn attack_entity_round_trips() {
 
 #[test]
 fn player_movement_round_trips() {
-    round_trip(PlayerPosition { position: [1.0, 2.0, 3.0], flags: 1 });
-    round_trip(PlayerPositionAndRotation { position: [-1.5, 64.0, 0.25], yaw: 90.0, pitch: -10.0, flags: 3 });
-    round_trip(PlayerRotation { yaw: 180.0, pitch: 0.0, flags: 0 });
+    round_trip(PlayerPosition {
+        position: [1.0, 2.0, 3.0],
+        flags: 1,
+    });
+    round_trip(PlayerPositionAndRotation {
+        position: [-1.5, 64.0, 0.25],
+        yaw: 90.0,
+        pitch: -10.0,
+        flags: 3,
+    });
+    round_trip(PlayerRotation {
+        yaw: 180.0,
+        pitch: 0.0,
+        flags: 0,
+    });
     round_trip(PlayerFlying { flags: 2 });
 }
 
 #[test]
 fn player_digging_round_trips() {
-    round_trip(PlayerDigging { action: 0, position: [10, 64, -10], direction: 1, sequence: 7 });
+    round_trip(PlayerDigging {
+        action: 0,
+        position: [10, 64, -10],
+        direction: 1,
+        sequence: 7,
+    });
 }
 
 #[test]
@@ -878,7 +1141,10 @@ fn client_settings_round_trip() {
 
 #[test]
 fn tab_complete_round_trips() {
-    round_trip(TabComplete { id: 4, text: "/give @p ".into() });
+    round_trip(TabComplete {
+        id: 4,
+        text: "/give @p ".into(),
+    });
 }
 
 // Wrappers: whole-body checks ------------------------------------------------------------------
@@ -892,19 +1158,31 @@ fn a_body_with_bytes_left_over_is_rejected() {
 
 #[test]
 fn a_truncated_body_is_rejected() {
-    let body = BlockChange { position: [1, 2, 3], state: 5 }.to_body();
+    let body = BlockChange {
+        position: [1, 2, 3],
+        state: 5,
+    }
+    .to_body();
     assert!(BlockChange::from_body(&body[..body.len() - 1], &REG).is_err());
 }
 
 #[test]
 fn block_change_matches_the_known_bytes() {
-    let body = BlockChange { position: [1, 2, 3], state: 1 }.to_body();
+    let body = BlockChange {
+        position: [1, 2, 3],
+        state: 1,
+    }
+    .to_body();
     assert_eq!(body, [0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x30, 0x02, 0x01]);
 }
 
 #[test]
 fn the_wrapper_type_is_checked_against_the_event() {
-    let event = PacketEvent::new(PacketType::PlayServer(PlayServer::KEEP_ALIVE), user(), KeepAlive { id: 5 }.to_body());
+    let event = PacketEvent::new(
+        PacketType::PlayServer(PlayServer::KEEP_ALIVE),
+        user(),
+        KeepAlive { id: 5 }.to_body(),
+    );
     assert_eq!(event.read::<KeepAlive>(&REG).unwrap(), KeepAlive { id: 5 });
     assert!(event.read::<ClearTitles>(&REG).is_err());
 }
@@ -942,8 +1220,18 @@ impl PacketListener for Recorder {
     }
 }
 
-fn recorder(name: &'static str, priority: Priority, log: &Arc<Mutex<Vec<&'static str>>>) -> Arc<Recorder> {
-    Arc::new(Recorder { name, priority, log: log.clone(), cancel: false, replace_with: None })
+fn recorder(
+    name: &'static str,
+    priority: Priority,
+    log: &Arc<Mutex<Vec<&'static str>>>,
+) -> Arc<Recorder> {
+    Arc::new(Recorder {
+        name,
+        priority,
+        log: log.clone(),
+        cancel: false,
+        replace_with: None,
+    })
 }
 
 fn keep_alive_body(id: i64) -> Vec<u8> {
@@ -959,18 +1247,35 @@ fn listeners_run_lowest_priority_first_and_monitor_last() {
     api.add_listener(recorder("lowest", Priority::Lowest, &log));
     api.add_listener(recorder("normal-a", Priority::Normal, &log));
     api.add_listener(recorder("normal-b", Priority::Normal, &log));
-    let outcome = api.dispatch_send(&user(), PacketType::PlayServer(PlayServer::KEEP_ALIVE), &keep_alive_body(1));
+    let outcome = api.dispatch_send(
+        &user(),
+        PacketType::PlayServer(PlayServer::KEEP_ALIVE),
+        &keep_alive_body(1),
+    );
     assert_eq!(outcome, Outcome::Unchanged);
-    assert_eq!(*log.lock().unwrap(), ["lowest", "normal-a", "normal-b", "high", "monitor"]);
+    assert_eq!(
+        *log.lock().unwrap(),
+        ["lowest", "normal-a", "normal-b", "high", "monitor"]
+    );
 }
 
 #[test]
 fn a_cancelled_packet_still_reaches_every_listener() {
     let api = PacketEvents::new(Box::new(BasicRegistry));
     let log = Arc::new(Mutex::new(Vec::new()));
-    api.add_listener(Arc::new(Recorder { name: "cancel", priority: Priority::Low, log: log.clone(), cancel: true, replace_with: None }));
+    api.add_listener(Arc::new(Recorder {
+        name: "cancel",
+        priority: Priority::Low,
+        log: log.clone(),
+        cancel: true,
+        replace_with: None,
+    }));
     api.add_listener(recorder("after", Priority::High, &log));
-    let outcome = api.dispatch_send(&user(), PacketType::PlayServer(PlayServer::KEEP_ALIVE), &keep_alive_body(1));
+    let outcome = api.dispatch_send(
+        &user(),
+        PacketType::PlayServer(PlayServer::KEEP_ALIVE),
+        &keep_alive_body(1),
+    );
     assert_eq!(outcome, Outcome::Cancelled);
     assert_eq!(*log.lock().unwrap(), ["cancel", "after"]);
 }
@@ -979,8 +1284,18 @@ fn a_cancelled_packet_still_reaches_every_listener() {
 fn a_changed_wrapper_is_sent_re_encoded() {
     let api = PacketEvents::new(Box::new(BasicRegistry));
     let log = Arc::new(Mutex::new(Vec::new()));
-    api.add_listener(Arc::new(Recorder { name: "rewrite", priority: Priority::Normal, log: log.clone(), cancel: false, replace_with: Some(77) }));
-    let outcome = api.dispatch_send(&user(), PacketType::PlayServer(PlayServer::KEEP_ALIVE), &keep_alive_body(1));
+    api.add_listener(Arc::new(Recorder {
+        name: "rewrite",
+        priority: Priority::Normal,
+        log: log.clone(),
+        cancel: false,
+        replace_with: Some(77),
+    }));
+    let outcome = api.dispatch_send(
+        &user(),
+        PacketType::PlayServer(PlayServer::KEEP_ALIVE),
+        &keep_alive_body(1),
+    );
     assert_eq!(outcome, Outcome::Changed(keep_alive_body(77)));
 }
 
@@ -999,14 +1314,22 @@ fn a_body_changed_without_the_re_encode_mark_is_not_sent() {
     let api = PacketEvents::new(Box::new(BasicRegistry));
     api.add_listener(Arc::new(Silent));
     assert_eq!(
-        api.dispatch_send(&user(), PacketType::PlayServer(PlayServer::KEEP_ALIVE), &keep_alive_body(1)),
+        api.dispatch_send(
+            &user(),
+            PacketType::PlayServer(PlayServer::KEEP_ALIVE),
+            &keep_alive_body(1)
+        ),
         Outcome::Unchanged
     );
 }
 
 #[test]
 fn set_body_marks_the_event_for_re_encoding() {
-    let mut event = PacketEvent::new(PacketType::PlayClient(PlayClient::KEEP_ALIVE), user(), keep_alive_body(1));
+    let mut event = PacketEvent::new(
+        PacketType::PlayClient(PlayClient::KEEP_ALIVE),
+        user(),
+        keep_alive_body(1),
+    );
     assert!(!event.needs_reencode());
     event.set_body(keep_alive_body(2));
     assert!(event.needs_reencode());
@@ -1017,8 +1340,18 @@ fn set_body_marks_the_event_for_re_encoding() {
 fn receive_listeners_see_client_packets() {
     let api = PacketEvents::new(Box::new(BasicRegistry));
     let log = Arc::new(Mutex::new(Vec::new()));
-    api.add_listener(Arc::new(Recorder { name: "receive", priority: Priority::Normal, log: log.clone(), cancel: true, replace_with: None }));
-    let outcome = api.dispatch_receive(&user(), PacketType::PlayClient(PlayClient::KEEP_ALIVE), &keep_alive_body(1));
+    api.add_listener(Arc::new(Recorder {
+        name: "receive",
+        priority: Priority::Normal,
+        log: log.clone(),
+        cancel: true,
+        replace_with: None,
+    }));
+    let outcome = api.dispatch_receive(
+        &user(),
+        PacketType::PlayClient(PlayClient::KEEP_ALIVE),
+        &keep_alive_body(1),
+    );
     assert_eq!(outcome, Outcome::Cancelled);
     assert_eq!(*log.lock().unwrap(), ["receive"]);
 }
@@ -1031,7 +1364,11 @@ fn removed_listeners_stop_running() {
     assert_eq!(api.listener_count(), 1);
     assert!(api.remove_listener(id));
     assert!(!api.remove_listener(id));
-    api.dispatch_send(&user(), PacketType::PlayServer(PlayServer::KEEP_ALIVE), &keep_alive_body(1));
+    api.dispatch_send(
+        &user(),
+        PacketType::PlayServer(PlayServer::KEEP_ALIVE),
+        &keep_alive_body(1),
+    );
     assert!(log.lock().unwrap().is_empty());
     assert_eq!(api.listener_count(), 0);
 }
@@ -1046,13 +1383,21 @@ fn a_listener_added_during_dispatch_does_not_deadlock() {
     }
     let api = Arc::new(PacketEvents::new(Box::new(BasicRegistry)));
     api.add_listener(Arc::new(Adder(api.clone())));
-    api.dispatch_send(&user(), PacketType::PlayServer(PlayServer::KEEP_ALIVE), &keep_alive_body(1));
+    api.dispatch_send(
+        &user(),
+        PacketType::PlayServer(PlayServer::KEEP_ALIVE),
+        &keep_alive_body(1),
+    );
     assert_eq!(api.listener_count(), 2);
 }
 
 #[test]
 fn the_event_exposes_its_packet_and_user() {
-    let event = PacketEvent::new(PacketType::PlayServer(PlayServer::PLUGIN_MESSAGE), user(), vec![]);
+    let event = PacketEvent::new(
+        PacketType::PlayServer(PlayServer::PLUGIN_MESSAGE),
+        user(),
+        vec![],
+    );
     assert_eq!(event.packet_id(), 24);
     assert_eq!(event.packet_name(), "plugin_message");
     assert!(event.is_server_side());
@@ -1070,7 +1415,10 @@ fn priorities_have_ids_in_order() {
 
 #[test]
 fn packets_of_the_other_states_are_listed_by_their_table() {
-    assert_eq!(LoginServer::from_id(2).map(|p| p.name()), Some("login_finished"));
+    assert_eq!(
+        LoginServer::from_id(2).map(|p| p.name()),
+        Some("login_finished")
+    );
     assert_eq!(LoginClient::ALL.len(), 5);
 }
 
@@ -1079,7 +1427,11 @@ fn raw_particle_and_entity_helpers_read_their_ids() {
     let p = RawParticle(vec![0x07]);
     assert_eq!(p.id(), Some(7));
     assert_eq!(RawParticle(vec![]).id(), None);
-    let e = EntityDataEntry { index: 0, serializer: 1, value: vec![5] };
+    let e = EntityDataEntry {
+        index: 0,
+        serializer: 1,
+        value: vec![5],
+    };
     assert_eq!(e.as_varint(), Some(5));
     assert_eq!(e.as_byte(), None);
 }

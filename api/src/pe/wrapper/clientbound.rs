@@ -5,7 +5,10 @@
 //! Clientbound play packets (server to client), as packetevents' `WrapperPlayServer*`.
 //! Layouts are those of Minecraft 26.3.
 
-use super::{EntityDataEntry, RawItem, RawParticle, Wrapper, read_entity_data, read_item, read_list, read_opt, write_entity_data, write_opt};
+use super::{
+    EntityDataEntry, RawItem, RawParticle, Wrapper, read_entity_data, read_item, read_list,
+    read_opt, write_entity_data, write_opt,
+};
 use crate::pe::codec::{Reader, Registry, Result, Writer, pack_section_pos, unpack_section_pos};
 use crate::pe::nbt::Tag;
 use crate::pe::packet_type::{PacketType, PlayServer};
@@ -87,7 +90,11 @@ impl NumberFormat {
             0 => NumberFormat::Blank,
             1 => NumberFormat::Styled(r.nbt()?),
             2 => NumberFormat::Fixed(r.nbt()?),
-            other => return Err(crate::pe::codec::Error::new(format!("number format {other}"))),
+            other => {
+                return Err(crate::pe::codec::Error::new(format!(
+                    "number format {other}"
+                )));
+            }
         })
     }
 
@@ -171,7 +178,11 @@ impl Wrapper for ChatMessage {
             unsigned_content: read_opt(r, |r| r.nbt())?,
             filter: {
                 let kind = r.varint()?;
-                let longs = if kind == 2 { read_list(r, 4096, |r| r.i64())? } else { Vec::new() };
+                let longs = if kind == 2 {
+                    read_list(r, 4096, |r| r.i64())?
+                } else {
+                    Vec::new()
+                };
                 (kind, longs)
             },
             chat_type: r.varint()?,
@@ -224,7 +235,10 @@ impl Wrapper for SystemChatMessage {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::SYSTEM_CHAT_MESSAGE);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(SystemChatMessage { content: r.nbt()?, overlay: r.bool()? })
+        Ok(SystemChatMessage {
+            content: r.nbt()?,
+            overlay: r.bool()?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -281,7 +295,11 @@ impl Wrapper for SetTitleTimes {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::SET_TITLE_TIMES);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(SetTitleTimes { fade_in: r.i32()?, stay: r.i32()?, fade_out: r.i32()? })
+        Ok(SetTitleTimes {
+            fade_in: r.i32()?,
+            stay: r.i32()?,
+            fade_out: r.i32()?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -344,8 +362,15 @@ pub enum BossBarAction {
     Remove,
     UpdateProgress(f32),
     UpdateName(Tag),
-    UpdateStyle { color: i32, overlay: i32 },
-    UpdateFlags { darken_sky: bool, play_music: bool, create_fog: bool },
+    UpdateStyle {
+        color: i32,
+        overlay: i32,
+    },
+    UpdateFlags {
+        darken_sky: bool,
+        play_music: bool,
+        create_fog: bool,
+    },
 }
 
 /// A boss bar (`BossEvent`): its id and what changes.
@@ -368,26 +393,54 @@ impl Wrapper for BossBar {
                 let color = r.varint()?;
                 let overlay = r.varint()?;
                 let (darken_sky, play_music, create_fog) = flags(r.u8()?);
-                BossBarAction::Add { name, progress, color, overlay, darken_sky, play_music, create_fog }
+                BossBarAction::Add {
+                    name,
+                    progress,
+                    color,
+                    overlay,
+                    darken_sky,
+                    play_music,
+                    create_fog,
+                }
             }
             1 => BossBarAction::Remove,
             2 => BossBarAction::UpdateProgress(r.f32()?),
             3 => BossBarAction::UpdateName(r.nbt()?),
-            4 => BossBarAction::UpdateStyle { color: r.varint()?, overlay: r.varint()? },
+            4 => BossBarAction::UpdateStyle {
+                color: r.varint()?,
+                overlay: r.varint()?,
+            },
             5 => {
                 let (darken_sky, play_music, create_fog) = flags(r.u8()?);
-                BossBarAction::UpdateFlags { darken_sky, play_music, create_fog }
+                BossBarAction::UpdateFlags {
+                    darken_sky,
+                    play_music,
+                    create_fog,
+                }
             }
-            other => return Err(crate::pe::codec::Error::new(format!("boss bar action {other}"))),
+            other => {
+                return Err(crate::pe::codec::Error::new(format!(
+                    "boss bar action {other}"
+                )));
+            }
         };
         Ok(BossBar { uuid, action })
     }
 
     fn write_fields(&self, w: &mut Writer) {
         w.uuid(self.uuid);
-        let bits = |d: bool, m: bool, f: bool| u8::from(d) | (u8::from(m) << 1) | (u8::from(f) << 2);
+        let bits =
+            |d: bool, m: bool, f: bool| u8::from(d) | (u8::from(m) << 1) | (u8::from(f) << 2);
         match &self.action {
-            BossBarAction::Add { name, progress, color, overlay, darken_sky, play_music, create_fog } => {
+            BossBarAction::Add {
+                name,
+                progress,
+                color,
+                overlay,
+                darken_sky,
+                play_music,
+                create_fog,
+            } => {
                 w.varint(0);
                 w.nbt(name);
                 w.f32(*progress);
@@ -409,7 +462,11 @@ impl Wrapper for BossBar {
                 w.varint(*color);
                 w.varint(*overlay);
             }
-            BossBarAction::UpdateFlags { darken_sky, play_music, create_fog } => {
+            BossBarAction::UpdateFlags {
+                darken_sky,
+                play_music,
+                create_fog,
+            } => {
                 w.varint(5);
                 w.u8(bits(*darken_sky, *play_music, *create_fog));
             }
@@ -428,7 +485,10 @@ impl Wrapper for EntityMetadata {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::ENTITY_METADATA);
 
     fn read_fields(r: &mut Reader, reg: &dyn Registry) -> Result<Self> {
-        Ok(EntityMetadata { entity_id: r.varint()?, values: read_entity_data(r, reg)? })
+        Ok(EntityMetadata {
+            entity_id: r.varint()?,
+            values: read_entity_data(r, reg)?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -539,7 +599,10 @@ impl Wrapper for BlockChange {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::BLOCK_CHANGE);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(BlockChange { position: r.block_pos()?, state: r.varint()? })
+        Ok(BlockChange {
+            position: r.block_pos()?,
+            state: r.varint()?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -561,8 +624,19 @@ impl MultiBlockChange {
     pub fn decode_entry(&self, entry: i64) -> (i32, [i32; 3]) {
         let state = (entry >> 12) as i32;
         let local = (entry & 0xFFF) as i32;
-        let base = [self.section[0] * 16, self.section[1] * 16, self.section[2] * 16];
-        (state, [base[0] + (local >> 8 & 0xF), base[1] + (local & 0xF), base[2] + (local >> 4 & 0xF)])
+        let base = [
+            self.section[0] * 16,
+            self.section[1] * 16,
+            self.section[2] * 16,
+        ];
+        (
+            state,
+            [
+                base[0] + (local >> 8 & 0xF),
+                base[1] + (local & 0xF),
+                base[2] + (local >> 4 & 0xF),
+            ],
+        )
     }
 }
 
@@ -599,7 +673,10 @@ impl Wrapper for PlayerInfoUpdate {
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
         let actions = r.u8()?;
         let entries = read_list(r, 4096, |r| {
-            let mut e = PlayerInfoEntry { uuid: r.uuid()?, ..PlayerInfoEntry::default() };
+            let mut e = PlayerInfoEntry {
+                uuid: r.uuid()?,
+                ..PlayerInfoEntry::default()
+            };
             if actions & 1 != 0 {
                 e.name = Some(r.string(16)?);
                 e.properties = read_list(r, 16, |r| {
@@ -611,7 +688,9 @@ impl Wrapper for PlayerInfoUpdate {
                 })?;
             }
             if actions & 2 != 0 {
-                e.chat_session = read_opt(r, |r| Ok((r.uuid()?, r.i64()?, r.byte_array(512)?, r.byte_array(4096)?)))?;
+                e.chat_session = read_opt(r, |r| {
+                    Ok((r.uuid()?, r.i64()?, r.byte_array(512)?, r.byte_array(4096)?))
+                })?;
             }
             if actions & 4 != 0 {
                 e.game_mode = Some(r.varint()?);
@@ -690,7 +769,9 @@ impl Wrapper for PlayerInfoRemove {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::PLAYER_INFO_REMOVE);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(PlayerInfoRemove { uuids: read_list(r, 4096, |r| r.uuid())? })
+        Ok(PlayerInfoRemove {
+            uuids: read_list(r, 4096, |r| r.uuid())?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -722,7 +803,11 @@ impl Wrapper for ScoreboardObjective {
         } else {
             None
         };
-        Ok(ScoreboardObjective { name, method, display })
+        Ok(ScoreboardObjective {
+            name,
+            method,
+            display,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -803,7 +888,12 @@ impl Wrapper for Teams {
         } else {
             Vec::new()
         };
-        Ok(Teams { name, method, parameters, players })
+        Ok(Teams {
+            name,
+            method,
+            parameters,
+            players,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -850,7 +940,12 @@ impl Wrapper for SetSlot {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::SET_SLOT);
 
     fn read_fields(r: &mut Reader, reg: &dyn Registry) -> Result<Self> {
-        Ok(SetSlot { window_id: r.varint()?, state_id: r.varint()?, slot: r.i16()?, item: read_item(r, reg)? })
+        Ok(SetSlot {
+            window_id: r.varint()?,
+            state_id: r.varint()?,
+            slot: r.i16()?,
+            item: read_item(r, reg)?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -881,7 +976,12 @@ impl Wrapper for WindowItems {
         for _ in 0..n {
             items.push(read_item(r, reg)?);
         }
-        Ok(WindowItems { window_id, state_id, items, carried: read_item(r, reg)? })
+        Ok(WindowItems {
+            window_id,
+            state_id,
+            items,
+            carried: read_item(r, reg)?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -908,7 +1008,11 @@ impl Wrapper for OpenWindow {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::OPEN_WINDOW);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(OpenWindow { window_id: r.varint()?, menu: r.varint()?, title: r.nbt()? })
+        Ok(OpenWindow {
+            window_id: r.varint()?,
+            menu: r.varint()?,
+            title: r.nbt()?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -1070,7 +1174,10 @@ impl Wrapper for PluginMessage {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::PLUGIN_MESSAGE);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(PluginMessage { channel: r.identifier()?, data: r.rest().to_vec() })
+        Ok(PluginMessage {
+            channel: r.identifier()?,
+            data: r.rest().to_vec(),
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -1122,7 +1229,9 @@ impl Wrapper for ResourcePackRemove {
     const TYPE: PacketType = PacketType::PlayServer(PlayServer::RESOURCE_PACK_REMOVE);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(ResourcePackRemove { uuid: read_opt(r, |r| r.uuid())? })
+        Ok(ResourcePackRemove {
+            uuid: read_opt(r, |r| r.uuid())?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {

@@ -20,7 +20,10 @@ impl Wrapper for PluginMessage {
     const TYPE: PacketType = PacketType::PlayClient(PlayClient::PLUGIN_MESSAGE);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(PluginMessage { channel: r.identifier()?, data: r.rest().to_vec() })
+        Ok(PluginMessage {
+            channel: r.identifier()?,
+            data: r.rest().to_vec(),
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -88,7 +91,9 @@ impl Wrapper for AttackEntity {
     const TYPE: PacketType = PacketType::PlayClient(PlayClient::ATTACK);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(AttackEntity { entity_id: r.varint()? })
+        Ok(AttackEntity {
+            entity_id: r.varint()?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -107,7 +112,10 @@ impl Wrapper for PlayerPosition {
     const TYPE: PacketType = PacketType::PlayClient(PlayClient::PLAYER_POSITION);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(PlayerPosition { position: [r.f64()?, r.f64()?, r.f64()?], flags: r.u8()? })
+        Ok(PlayerPosition {
+            position: [r.f64()?, r.f64()?, r.f64()?],
+            flags: r.u8()?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -161,7 +169,11 @@ impl Wrapper for PlayerRotation {
     const TYPE: PacketType = PacketType::PlayClient(PlayClient::PLAYER_ROTATION);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(PlayerRotation { yaw: r.f32()?, pitch: r.f32()?, flags: r.u8()? })
+        Ok(PlayerRotation {
+            yaw: r.f32()?,
+            pitch: r.f32()?,
+            flags: r.u8()?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -353,7 +365,10 @@ impl Wrapper for TabComplete {
     const TYPE: PacketType = PacketType::PlayClient(PlayClient::TAB_COMPLETE);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(TabComplete { id: r.varint()?, text: r.string(32500)? })
+        Ok(TabComplete {
+            id: r.varint()?,
+            text: r.string(32500)?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {
@@ -375,7 +390,10 @@ impl Wrapper for ResourcePackStatus {
     const TYPE: PacketType = PacketType::PlayClient(PlayClient::RESOURCE_PACK_STATUS);
 
     fn read_fields(r: &mut Reader, _reg: &dyn Registry) -> Result<Self> {
-        Ok(ResourcePackStatus { uuid: r.uuid()?, action: r.varint()? })
+        Ok(ResourcePackStatus {
+            uuid: r.uuid()?,
+            action: r.varint()?,
+        })
     }
 
     fn write_fields(&self, w: &mut Writer) {

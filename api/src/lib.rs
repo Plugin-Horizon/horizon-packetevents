@@ -17,8 +17,8 @@ pub mod pe;
 use horizon_client::mod_api::{ClientboundPlayPacket, Hooks, Host, TickEvent};
 use pe::manager::{Outcome, PacketEvents};
 use pe::packet_type::{ConnectionState, PacketType, PlayClient};
-use pe::wrapper::serverbound::PluginMessage;
 use pe::wrapper::Wrapper;
+use pe::wrapper::serverbound::PluginMessage;
 use pe::{Registry, User};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -58,7 +58,11 @@ impl PacketMod {
             .get(&uuid)
             .cloned()
             .unwrap_or_default();
-        User { uuid, name, state: ConnectionState::Play }
+        User {
+            uuid,
+            name,
+            state: ConnectionState::Play,
+        }
     }
 }
 
@@ -81,8 +85,12 @@ impl Hooks for PacketMod {
     /// Every play packet the server is about to send a guest (`native_server_packet`).
     fn server_packet(&self, player: u128, packet: &mut ClientboundPlayPacket, cancel: &mut bool) {
         let frame = packet.encode();
-        let Some((id, body)) = split_frame(&frame) else { return };
-        let Some(packet_type) = PacketType::lookup(ConnectionState::Play, true, id) else { return };
+        let Some((id, body)) = split_frame(&frame) else {
+            return;
+        };
+        let Some(packet_type) = PacketType::lookup(ConnectionState::Play, true, id) else {
+            return;
+        };
         let user = self.user(player);
         match packet_events().dispatch_send(&user, packet_type, body) {
             Outcome::Unchanged => {}
@@ -98,10 +106,24 @@ impl Hooks for PacketMod {
 
     /// A plugin channel message from a player (`native_custom_payload_from_client`). Listen-only:
     /// the message reaches the server whatever the listeners say (GAPS.md).
-    fn custom_payload_from_client(&self, _host: &mut dyn Host, player: u128, channel: &str, data: &[u8]) {
-        let body = PluginMessage { channel: channel.to_owned(), data: data.to_vec() }.to_body();
+    fn custom_payload_from_client(
+        &self,
+        _host: &mut dyn Host,
+        player: u128,
+        channel: &str,
+        data: &[u8],
+    ) {
+        let body = PluginMessage {
+            channel: channel.to_owned(),
+            data: data.to_vec(),
+        }
+        .to_body();
         let user = self.user(player);
-        let _ = packet_events().dispatch_receive(&user, PacketType::PlayClient(PlayClient::PLUGIN_MESSAGE), &body);
+        let _ = packet_events().dispatch_receive(
+            &user,
+            PacketType::PlayClient(PlayClient::PLUGIN_MESSAGE),
+            &body,
+        );
     }
 }
 
@@ -127,8 +149,10 @@ impl Registry for HorizonRegistry {
         use horizon_protocol::buf::{Codec, Reader};
         let mut r = Reader::new(data);
         let _stack: Option<horizon_protocol::item::Stack> =
-            <horizon_protocol::item::Slot as Codec<Option<horizon_protocol::item::Stack>>>::read(&mut r)
-                .map_err(|e| pe::Error::new(format!("item: {e:?}")))?;
+            <horizon_protocol::item::Slot as Codec<Option<horizon_protocol::item::Stack>>>::read(
+                &mut r,
+            )
+            .map_err(|e| pe::Error::new(format!("item: {e:?}")))?;
         Ok(data.len() - r.remaining())
     }
 

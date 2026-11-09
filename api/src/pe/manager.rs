@@ -42,7 +42,11 @@ pub struct PacketEvents {
 
 impl PacketEvents {
     pub fn new(registry: Box<dyn Registry>) -> PacketEvents {
-        PacketEvents { registry, listeners: RwLock::new(Vec::new()), next_id: RwLock::new(0) }
+        PacketEvents {
+            registry,
+            listeners: RwLock::new(Vec::new()),
+            next_id: RwLock::new(0),
+        }
     }
 
     /// The registry of the game's data (items, particles, entity values).
@@ -60,8 +64,18 @@ impl PacketEvents {
         let mut list = self.listeners.write().unwrap_or_else(|e| e.into_inner());
         let priority = listener.priority();
         // Insert after the last entry of the same or a lower priority: stable order.
-        let at = list.iter().position(|e| e.priority > priority).unwrap_or(list.len());
-        list.insert(at, Entry { id, priority, listener });
+        let at = list
+            .iter()
+            .position(|e| e.priority > priority)
+            .unwrap_or(list.len());
+        list.insert(
+            at,
+            Entry {
+                id,
+                priority,
+                listener,
+            },
+        );
         id
     }
 
@@ -75,7 +89,10 @@ impl PacketEvents {
 
     /// The number of listeners.
     pub fn listener_count(&self) -> usize {
-        self.listeners.read().unwrap_or_else(|e| e.into_inner()).len()
+        self.listeners
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .len()
     }
 
     /// Runs the listeners on a packet the server is about to send to `user`.

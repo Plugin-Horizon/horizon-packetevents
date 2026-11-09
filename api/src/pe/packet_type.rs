@@ -1225,7 +1225,9 @@ impl PacketType {
     pub fn state(self) -> ConnectionState {
         match self {
             PacketType::PlayServer(_) | PacketType::PlayClient(_) => ConnectionState::Play,
-            PacketType::ConfigurationServer(_) | PacketType::ConfigurationClient(_) => ConnectionState::Configuration,
+            PacketType::ConfigurationServer(_) | PacketType::ConfigurationClient(_) => {
+                ConnectionState::Configuration
+            }
             PacketType::LoginServer(_) | PacketType::LoginClient(_) => ConnectionState::Login,
         }
     }
@@ -1234,7 +1236,9 @@ impl PacketType {
     pub fn is_server_side(self) -> bool {
         matches!(
             self,
-            PacketType::PlayServer(_) | PacketType::ConfigurationServer(_) | PacketType::LoginServer(_)
+            PacketType::PlayServer(_)
+                | PacketType::ConfigurationServer(_)
+                | PacketType::LoginServer(_)
         )
     }
 
@@ -1274,7 +1278,9 @@ impl PacketType {
                 ConfigurationClient::from_id(id).map(PacketType::ConfigurationClient)
             }
             (ConnectionState::Login, true) => LoginServer::from_id(id).map(PacketType::LoginServer),
-            (ConnectionState::Login, false) => LoginClient::from_id(id).map(PacketType::LoginClient),
+            (ConnectionState::Login, false) => {
+                LoginClient::from_id(id).map(PacketType::LoginClient)
+            }
             _ => None,
         }
     }

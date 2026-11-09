@@ -31,10 +31,12 @@ impl Tag {
     pub fn plain_text(&self) -> Option<&str> {
         match self {
             Tag::String(s) => Some(s),
-            Tag::Compound(entries) if entries.len() == 1 && entries[0].0 == "text" => match &entries[0].1 {
-                Tag::String(s) => Some(s),
-                _ => None,
-            },
+            Tag::Compound(entries) if entries.len() == 1 && entries[0].0 == "text" => {
+                match &entries[0].1 {
+                    Tag::String(s) => Some(s),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }
@@ -244,7 +246,9 @@ fn write_mutf8(s: &str, out: &mut Vec<u8>) {
         match code {
             0 => body.extend_from_slice(&[0xC0, 0x80]),
             0x01..=0x7F => body.push(code as u8),
-            0x80..=0x7FF => body.extend_from_slice(&[0xC0 | (code >> 6) as u8, 0x80 | (code & 0x3F) as u8]),
+            0x80..=0x7FF => {
+                body.extend_from_slice(&[0xC0 | (code >> 6) as u8, 0x80 | (code & 0x3F) as u8])
+            }
             0x800..=0xFFFF => body.extend_from_slice(&[
                 0xE0 | (code >> 12) as u8,
                 0x80 | ((code >> 6) & 0x3F) as u8,
@@ -275,12 +279,23 @@ fn read_mutf8(bytes: &[u8]) -> Result<String> {
         let (unit, used) = if b & 0x80 == 0 {
             (u16::from(b), 1)
         } else if b & 0xE0 == 0xC0 {
-            let b2 = *bytes.get(i + 1).ok_or_else(|| Error::new("bad modified UTF-8"))?;
+            let b2 = *bytes
+                .get(i + 1)
+                .ok_or_else(|| Error::new("bad modified UTF-8"))?;
             (((u16::from(b) & 0x1F) << 6) | (u16::from(b2) & 0x3F), 2)
         } else if b & 0xF0 == 0xE0 {
-            let b2 = *bytes.get(i + 1).ok_or_else(|| Error::new("bad modified UTF-8"))?;
-            let b3 = *bytes.get(i + 2).ok_or_else(|| Error::new("bad modified UTF-8"))?;
-            (((u16::from(b) & 0x0F) << 12) | ((u16::from(b2) & 0x3F) << 6) | (u16::from(b3) & 0x3F), 3)
+            let b2 = *bytes
+                .get(i + 1)
+                .ok_or_else(|| Error::new("bad modified UTF-8"))?;
+            let b3 = *bytes
+                .get(i + 2)
+                .ok_or_else(|| Error::new("bad modified UTF-8"))?;
+            (
+                ((u16::from(b) & 0x0F) << 12)
+                    | ((u16::from(b2) & 0x3F) << 6)
+                    | (u16::from(b3) & 0x3F),
+                3,
+            )
         } else {
             return Err(Error::new("bad modified UTF-8"));
         };
