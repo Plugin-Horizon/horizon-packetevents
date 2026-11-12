@@ -2,7 +2,7 @@ id = "packetevents"
 name = "PacketEvents"
 version = "0.1.0"
 description = "Packet API for native mods after packetevents: packet types, listeners with priorities, cancellation, typed wrappers."
-authors = ["CoreSMP"]
+authors = ["Plugin-Horizon contributors"]
 api = "0.2"
 capabilities = ["registries"]
 
