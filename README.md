@@ -1,8 +1,8 @@
 # horizon-packetevents
 
-> **Unofficial Rust port of packetevents for the Horizon server (https://github.com/horizon-rust/horizon). Not affiliated with or endorsed by the packetevents authors.**
+> **Unofficial Rust port of packetevents for the Horizon server (https://github.com/arismoko/horizon). Not affiliated with or endorsed by the packetevents authors.**
 
-A packet API for [Horizon](https://github.com/horizon-rust/horizon) native mods, after
+A packet API for [Horizon](https://github.com/arismoko/horizon) native mods, after
 [packetevents](https://github.com/retrooper/packetevents): packet types, listeners with priorities,
 cancellation, typed wrappers and sending a packet to a player, for Minecraft 26.3. Other native mods
 depend on it instead of hooking raw bytes.
@@ -10,11 +10,18 @@ depend on it instead of hooking raw bytes.
 Derived from packetevents (GPL-3.0-or-later). The licence of this mod is therefore GPL-3.0-or-later (see LICENSE);
 the copyright holders are in NOTICE.
 
-**State: the glue builds against Horizon `1453e0e61` (`cargo build` in `api/`); the packet model is unit-tested
-(`core/`, 81 tests, which `api/` runs too). The glue has not run inside a Horizon server yet (see STATUS.md and GAPS.md).**
-
 Upstream: packetevents (https://github.com/retrooper/packetevents), commit `3e4e42ea9b8f2a6145a35c7fb80b618343266807`,
 GPL-3.0. Horizon pin: `1453e0e614af4b2d04dd0d228a94162b5d459910`.
+
+> **Built for and working only with [arismoko/horizon](https://github.com/arismoko/horizon)** (the Horizon fork that carries the mod API). [horizon-rust/horizon](https://github.com/horizon-rust/horizon) is experimental for mods and not supported: the earlier version for its native hooks / horizon-mixins is frozen on the `horizon-plain` branch (work stopped on 2026-11-12).
+
+## Which Horizon
+
+This is a native trait mod: `horizon-mod.toml`, a `Cargo.toml` that depends on `horizon-mod-api`, `src/lib.rs` with the hooks, and the plugin logic in the `core/` crate (plain Rust, no engine needed for its tests).
+
+- Pin: `[native] horizon = "54090ee36c4e2c7b43b66db864220c577b94b7e0"` in `horizon-mod.toml` (game `26.3`). That is a development build of arismoko/horizon `main` plus mod API additions that are not all merged upstream yet, so a stock `main` may lack some host methods this mod calls until they land.
+- It compiled and loaded on that build and was smoke-tested there; it has not seen a long run with real players. Treat it as experimental.
+- Feature descriptions below were written for the earlier horizon-rust version; where they name engine calls (`native_*`) or old file paths, read them as descriptions only. The Known gaps list is current.
 
 ## What it gives a mod
 
@@ -52,33 +59,27 @@ mod_packetevents::packet_events().add_listener(std::sync::Arc::new(Titles));
   the packet type, `read::<Wrapper>()` and `write(&wrapper)`. A changed event is re-encoded only when it is
   marked, as packetevents does.
 - **Wrappers** (`pe::wrapper`): 43 typed wrappers, named `Wrapper*` after packetevents'. See the table in
-  STATUS.md. Each round-trips its bytes exactly.
+  the Known gaps section. Each round-trips its bytes exactly.
 - **Registry** (`pe::Registry`): item slots, particles and entity data values need the game's registries to
   be measured. The glue asks Horizon's own codecs for them; the core alone knows the simple cases.
 
-## Layout
-
-- `api/src/pe/` — the packet model, engine-free: `codec.rs` (wire primitives, `Registry`), `nbt.rs` (network NBT,
-  text components), `packet_type.rs` (generated 26.3 tables), `event.rs`, `manager.rs` (listeners, dispatch),
-  `wrapper/` (`clientbound.rs`, `serverbound.rs`), `tests.rs`.
-- `api/src/lib.rs` — the trait mod: `Hooks::server_packet` (every play packet the server sends a guest, encoded
-  and decoded with Horizon's own `encode` and `decode`), `tick` (switches the packet watch on, refreshes names),
-  `custom_payload_from_client`, and `HorizonRegistry` (Horizon's item and particle codecs).
-- `core/` — builds `api/src/pe/` as a crate of its own: `cd core && cargo test`.
-
-Listed in GAPS.md: what Horizon does not have yet (a cancellable incoming packet hook, a helper to send a
-clientbound play packet to one player, entity values of any serializer, configuration and login packets).
-
 ## Build
 
-As any trait mod: put this folder into the launcher's mods and build the game (docs/native-mods.md, "Trait mods").
-It needs no injections. The glue pins Horizon at the commit in `horizon-mixin.toml`.
+Build it as a native trait mod with arismoko's launcher (see the "native mods" how-to in the arismoko/horizon docs):
+
+```sh
+horizon-launcher native-build <path to this folder> --server-output <dir> --version <tag> --trust-native-code
+```
+
+`--trust-native-code` is your consent to compile and run this code inside the server. The logic crate tests run without the engine: `(cd core && cargo test)`.
+
+## Known gaps
+
+What does not work yet on arismoko/horizon (each is marked `TODO(arismoko-api: ...)` in `src/lib.rs`):
+
+- Outgoing packets cannot be watched and serverbound packets cannot be cancelled yet (the matching hooks do not exist), so listeners only see what the mod API reports.
+- Item slots and particles in packets are measured without registry protocol ids.
 
 ## Licence and credits
 
 GPL-3.0-or-later. See LICENSE and NOTICE. Modifications for Horizon are by Plugin-Horizon contributors.
-
-## Contributing
-
-Pull requests and improvements are welcome. See CONTRIBUTING.md. Changes to the packet model are tested with
-`cd core && cargo test`; CI runs that on every pull request.
