@@ -82,4 +82,4 @@ What does not work yet on arismoko/horizon (each is marked `TODO(arismoko-api: .
 
 ## Licence and credits
 
-GPL-3.0-or-later. See LICENSE and NOTICE. Modifications for Horizon are by Plugin-Horizon contributors.
+GPL-3.0-or-later. See LICENSE and NOTICE. Modifications for Horizon are by LionSpacer.

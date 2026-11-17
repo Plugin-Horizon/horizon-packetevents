@@ -5,7 +5,7 @@ Minecraft, and is distributed under the GNU General Public License version 3 or 
 later version (see LICENSE).
 
 Copyright (C) 2026 retrooper and contributors (packetevents)
-Copyright (C) Plugin-Horizon contributors (the port to Horizon)
+Copyright (C) LionSpacer (the port to Horizon)
 
 The packet types, the listener model (`PacketEvent`, `PacketListener`, `PacketListenerPriority`,
 the send and receive events, `markForReEncode`, cancellation), the wrapper structure and the wrapper
