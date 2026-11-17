@@ -2,7 +2,7 @@
 //! tag id, then its payload, with no root name. Strings are modified UTF-8 (NUL and supplementary
 //! characters are written the Java way).
 
-use crate::pe::codec::{Error, Result};
+use crate::horizon_packetevents_core::pe::codec::{Error, Result};
 
 /// A tag. `List` keeps its element id, as NBT does (an empty list is `End`).
 #[derive(Clone, Debug, PartialEq)]

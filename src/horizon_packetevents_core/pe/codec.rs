@@ -4,7 +4,7 @@
 //! and gets them back from Horizon's own encoder (see `Registry` for the parts that need the
 //! item, particle and entity data registries).
 
-use crate::pe::nbt::Tag;
+use crate::horizon_packetevents_core::pe::nbt::Tag;
 use std::fmt;
 
 /// A malformed or unsupported packet body.

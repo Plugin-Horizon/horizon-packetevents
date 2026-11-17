@@ -9,9 +9,9 @@ use super::{
     EntityDataEntry, RawItem, RawParticle, Wrapper, read_entity_data, read_item, read_list,
     read_opt, write_entity_data, write_opt,
 };
-use crate::pe::codec::{Reader, Registry, Result, Writer, pack_section_pos, unpack_section_pos};
-use crate::pe::nbt::Tag;
-use crate::pe::packet_type::{PacketType, PlayServer};
+use crate::horizon_packetevents_core::pe::codec::{Reader, Registry, Result, Writer, pack_section_pos, unpack_section_pos};
+use crate::horizon_packetevents_core::pe::nbt::Tag;
+use crate::horizon_packetevents_core::pe::packet_type::{PacketType, PlayServer};
 
 /// A sound event: a registry id, or an inline name with an optional range.
 #[derive(Clone, Debug, PartialEq)]
@@ -91,7 +91,7 @@ impl NumberFormat {
             1 => NumberFormat::Styled(r.nbt()?),
             2 => NumberFormat::Fixed(r.nbt()?),
             other => {
-                return Err(crate::pe::codec::Error::new(format!(
+                return Err(crate::horizon_packetevents_core::pe::codec::Error::new(format!(
                     "number format {other}"
                 )));
             }
@@ -419,7 +419,7 @@ impl Wrapper for BossBar {
                 }
             }
             other => {
-                return Err(crate::pe::codec::Error::new(format!(
+                return Err(crate::horizon_packetevents_core::pe::codec::Error::new(format!(
                     "boss bar action {other}"
                 )));
             }

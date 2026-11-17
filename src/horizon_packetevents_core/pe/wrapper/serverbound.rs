@@ -6,8 +6,8 @@
 //! Layouts are those of Minecraft 26.3.
 
 use super::Wrapper;
-use crate::pe::codec::{Reader, Registry, Result, Writer};
-use crate::pe::packet_type::{PacketType, PlayClient};
+use crate::horizon_packetevents_core::pe::codec::{Reader, Registry, Result, Writer};
+use crate::horizon_packetevents_core::pe::packet_type::{PacketType, PlayClient};
 
 /// A plugin channel message from the client (`CustomPayload`).
 #[derive(Clone, Debug, PartialEq, Eq)]

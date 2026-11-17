@@ -5,9 +5,9 @@
 //! Packet events, as packetevents' `PacketEvent` family: a packet in one direction, the player it
 //! belongs to, the body, and the flags a listener sets (cancel, re-encode).
 
-use crate::pe::codec::{Registry, Result};
-use crate::pe::packet_type::{ConnectionState, PacketType};
-use crate::pe::wrapper::Wrapper;
+use crate::horizon_packetevents_core::pe::codec::{Registry, Result};
+use crate::horizon_packetevents_core::pe::packet_type::{ConnectionState, PacketType};
+use crate::horizon_packetevents_core::pe::wrapper::Wrapper;
 
 /// The order listeners run in, lowest first (packetevents' `PacketListenerPriority`). `Monitor`
 /// listeners look at the result and must not change it.
@@ -118,7 +118,7 @@ impl PacketEvent {
     /// Reads the body as the wrapper `W`; fails when `W` is for another packet.
     pub fn read<W: Wrapper>(&self, reg: &dyn Registry) -> Result<W> {
         if W::TYPE != self.packet_type {
-            return Err(crate::pe::codec::Error::new(format!(
+            return Err(crate::horizon_packetevents_core::pe::codec::Error::new(format!(
                 "event is {} and not {}",
                 self.packet_type.name(),
                 W::TYPE.name()
@@ -130,7 +130,7 @@ impl PacketEvent {
     /// Replaces the body with `wrapper`'s and marks the event for re-encoding.
     pub fn write<W: Wrapper>(&mut self, wrapper: &W) -> Result<()> {
         if W::TYPE != self.packet_type {
-            return Err(crate::pe::codec::Error::new(format!(
+            return Err(crate::horizon_packetevents_core::pe::codec::Error::new(format!(
                 "event is {} and not {}",
                 self.packet_type.name(),
                 W::TYPE.name()

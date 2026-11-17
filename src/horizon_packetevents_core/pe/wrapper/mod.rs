@@ -11,8 +11,8 @@
 pub mod clientbound;
 pub mod serverbound;
 
-use crate::pe::codec::{Reader, Registry, Result, Writer};
-use crate::pe::packet_type::PacketType;
+use crate::horizon_packetevents_core::pe::codec::{Reader, Registry, Result, Writer};
+use crate::horizon_packetevents_core::pe::packet_type::PacketType;
 
 /// A typed view of one packet type.
 pub trait Wrapper: Sized {

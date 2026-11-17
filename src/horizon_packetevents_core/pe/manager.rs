@@ -6,9 +6,9 @@
 //! listeners run lowest priority first, equal priorities in the order they were added, and a
 //! packet's outcome says whether it goes out unchanged, with changed bytes, or not at all.
 
-use crate::pe::codec::Registry;
-use crate::pe::event::{PacketEvent, PacketListener, Priority, User};
-use crate::pe::packet_type::PacketType;
+use crate::horizon_packetevents_core::pe::codec::Registry;
+use crate::horizon_packetevents_core::pe::event::{PacketEvent, PacketListener, Priority, User};
+use crate::horizon_packetevents_core::pe::packet_type::PacketType;
 use std::sync::{Arc, RwLock};
 
 /// Identifies a listener for `remove_listener`.

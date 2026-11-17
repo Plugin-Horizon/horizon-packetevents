@@ -9,13 +9,15 @@
 //!   but is a parameterless stub that the typed-payload design removes, so it is not used;
 //! - no registry codec for item slots and particles (`registry_protocol_id`), so the core's
 //!   basic measures are used and anything else stays as it was sent.
-use horizon_packetevents_core::pe::{
+
+pub mod horizon_packetevents_core;
+use crate::horizon_packetevents_core::pe::{
     BasicRegistry, ConnectionState, Outcome, PacketEvents, PacketType, User,
 };
-use horizon_packetevents_core::pe::packet_type::PlayClient;
-use horizon_packetevents_core::pe::wrapper::Wrapper;
-use horizon_packetevents_core::pe::wrapper::serverbound::PluginMessage;
-use mod_api::{ClientboundPlayPacket, Hooks, Identifier, ServerHost, ServerTickEvent, ServerTickPhase};
+use crate::horizon_packetevents_core::pe::packet_type::PlayClient;
+use crate::horizon_packetevents_core::pe::wrapper::Wrapper;
+use crate::horizon_packetevents_core::pe::wrapper::serverbound::PluginMessage;
+use mod_api::{Hooks, Identifier, ServerHost, ServerTickEvent, ServerTickPhase};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
@@ -135,8 +137,10 @@ fn send_to_player(host: &mut dyn ServerHost, uuid: u128, name: &str, body: &[u8]
     let Some(player) = host.players().server_players().into_iter().find(|p| p.uuid() == uuid) else {
         return false;
     };
-    host.player_send_packet(player, ClientboundPlayPacket::new(name, body.to_vec()))
-        .is_ok()
+    // HMOD-GAP(player-send-packet): Horizon main has no server-side send of a vanilla play packet to one player
+    // (only declared payload channels, `PlayerRef::send_payload`). Nothing is sent; the mod loses packet sends.
+    let _ = (player, name, body);
+    false
 }
 
 /// Splits a frame (VarInt id, then the body) into the id and the body.
