@@ -1199,6 +1199,57 @@ impl LoginClient {
         }
     }
 }
+/// packetevents' names for the configuration and login packets, as associated constants: the enums
+/// above use the vanilla 26.3 names, packetevents calls these packets differently, so code written
+/// against packetevents finds them under its own names (the same packet, the same id).
+impl ConfigurationClient {
+    pub const CLIENT_SETTINGS: ConfigurationClient = ConfigurationClient::CLIENT_INFORMATION;
+    pub const PLUGIN_MESSAGE: ConfigurationClient = ConfigurationClient::CUSTOM_PAYLOAD;
+    pub const CONFIGURATION_END_ACK: ConfigurationClient = ConfigurationClient::FINISH_CONFIGURATION;
+    pub const RESOURCE_PACK_STATUS: ConfigurationClient = ConfigurationClient::RESOURCE_PACK;
+}
+
+impl LoginServer {
+    pub const DISCONNECT: LoginServer = LoginServer::LOGIN_DISCONNECT;
+    pub const ENCRYPTION_REQUEST: LoginServer = LoginServer::HELLO;
+    pub const LOGIN_SUCCESS: LoginServer = LoginServer::LOGIN_FINISHED;
+    pub const SET_COMPRESSION: LoginServer = LoginServer::LOGIN_COMPRESSION;
+    pub const LOGIN_PLUGIN_REQUEST: LoginServer = LoginServer::CUSTOM_QUERY;
+}
+
+impl LoginClient {
+    pub const LOGIN_START: LoginClient = LoginClient::HELLO;
+    pub const ENCRYPTION_RESPONSE: LoginClient = LoginClient::KEY;
+    pub const LOGIN_PLUGIN_RESPONSE: LoginClient = LoginClient::CUSTOM_QUERY_ANSWER;
+    pub const LOGIN_SUCCESS_ACK: LoginClient = LoginClient::LOGIN_ACKNOWLEDGED;
+}
+
+#[cfg(test)]
+mod packetevents_names {
+    use super::*;
+
+    #[test]
+    fn packetevents_names_are_the_same_packets() {
+        assert_eq!(ConfigurationClient::CLIENT_SETTINGS.id(), 0);
+        assert_eq!(ConfigurationClient::PLUGIN_MESSAGE.id(), 2);
+        assert_eq!(ConfigurationClient::CONFIGURATION_END_ACK.id(), 3);
+        assert_eq!(ConfigurationClient::RESOURCE_PACK_STATUS.id(), 6);
+        assert_eq!(LoginServer::DISCONNECT.id(), 0);
+        assert_eq!(LoginServer::ENCRYPTION_REQUEST.id(), 1);
+        assert_eq!(LoginServer::LOGIN_SUCCESS.id(), 2);
+        assert_eq!(LoginServer::SET_COMPRESSION.id(), 3);
+        assert_eq!(LoginServer::LOGIN_PLUGIN_REQUEST.id(), 4);
+        assert_eq!(LoginClient::LOGIN_START.id(), 0);
+        assert_eq!(LoginClient::ENCRYPTION_RESPONSE.id(), 1);
+        assert_eq!(LoginClient::LOGIN_PLUGIN_RESPONSE.id(), 2);
+        assert_eq!(LoginClient::LOGIN_SUCCESS_ACK.id(), 3);
+        assert_eq!(
+            PacketType::lookup(ConnectionState::Login, true, 2),
+            Some(PacketType::LoginServer(LoginServer::LOGIN_SUCCESS))
+        );
+    }
+}
+
 /// The protocol states a packet can be in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ConnectionState {

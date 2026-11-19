@@ -19,11 +19,12 @@ use crate::horizon_packetevents_core::pe::wrapper::Wrapper;
 use crate::horizon_packetevents_core::pe::wrapper::serverbound::PluginMessage;
 use mod_api::{Hooks, Identifier, ServerHost, ServerTickEvent, ServerTickPhase};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-/// Server ticks between two refreshes of the player names.
-const NAME_EVERY_TICKS: u64 = 20;
+/// Whether a packet source is wired to the listeners. It is not: Horizon has no server-side packet
+/// hook yet (see the Known gaps in the README), so `add_listener` registers a listener that is never
+/// called. A mod that depends on interception can check this first.
+pub const PACKET_SOURCE_WIRED: bool = false;
 
 /// The mod's packet API, for other mods that depend on this crate: `packet_events().add_listener`.
 pub fn packet_events() -> &'static PacketEvents {
@@ -35,8 +36,7 @@ pub fn packet_events() -> &'static PacketEvents {
 
 #[derive(Default)]
 struct Mod {
-    ticks: AtomicU64,
-    /// Player names by uuid, refreshed every few ticks: a packet hook has no host to ask.
+    /// Player names by uuid, rebuilt every tick: a packet hook has no host to ask.
     names: Mutex<HashMap<u128, String>>,
 }
 
@@ -110,17 +110,16 @@ impl Hooks for Mod {
         // TODO(arismoko-api: server_packet): the outgoing packet watch (`watch_server_packets` in
         // the horizon-rust port) is switched on here once the hook exists; until then no packet
         // is heard.
-        let tick = self.ticks.fetch_add(1, Ordering::Relaxed);
-        if tick % NAME_EVERY_TICKS == 0 {
-            let mut names = self.names.lock().unwrap_or_else(|e| e.into_inner());
-            for p in host.players().server_players() {
-                // UNVERIFIED: `PlayerRef::name(host)` is named in docs/modding (001, "Server services
-                // and player handles"); its exact return type is not in the source tree.
-                if let Some(name) = p.name(&*host) {
-                    names.insert(p.uuid(), name);
-                }
+        // Rebuilt, not added to: a player who left is gone and one who joined has a name at once.
+        let mut names = HashMap::new();
+        for p in host.players().server_players() {
+            // UNVERIFIED: `PlayerRef::name(host)` is named in docs/modding (001, "Server services
+            // and player handles"); its exact return type is not in the source tree.
+            if let Some(name) = p.name(&*host) {
+                names.insert(p.uuid(), name);
             }
         }
+        *self.names.lock().unwrap_or_else(|e| e.into_inner()) = names;
     }
 }
 

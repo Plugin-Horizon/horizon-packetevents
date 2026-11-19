@@ -51,15 +51,19 @@ mod_packetevents::packet_events().add_listener(std::sync::Arc::new(Titles));
 
 - **Packet types** (`pe::packet_type`): `PlayServer` (clientbound), `PlayClient` (serverbound),
   `ConfigurationServer`, `ConfigurationClient`, `LoginServer`, `LoginClient`, named as packetevents names
-  them (`CHAT_MESSAGE`, `PLAYER_BLOCK_PLACEMENT` ...), with the 26.3 ids. `PacketType::lookup` finds one by
+  them (`CHAT_MESSAGE`, `PLAYER_BLOCK_PLACEMENT` ...), with the 26.3 ids. The configuration and login enums
+  use vanilla's names for some packets; packetevents' names for them (`LOGIN_SUCCESS`,
+  `CONFIGURATION_END_ACK` ...) are associated constants of the same packet. Packets that 26.3 removed
+  (`SPAWN_LIVING_ENTITY`, `TITLE`, `WINDOW_CONFIRMATION` ...) and the handshake and status packets do not exist. `PacketType::lookup` finds one by
   state, side and id.
 - **Listeners** (`pe::event`): implement `PacketListener` with `priority()` (`Lowest` ... `Monitor`) and
   `on_packet_send` / `on_packet_receive`. Listeners run lowest priority first, and `Monitor` last.
 - **Events** (`pe::event::PacketEvent`): `is_cancelled` / `set_cancelled`, `mark_for_reencode`, the user,
   the packet type, `read::<Wrapper>()` and `write(&wrapper)`. A changed event is re-encoded only when it is
   marked, as packetevents does.
-- **Wrappers** (`pe::wrapper`): 43 typed wrappers, named `Wrapper*` after packetevents'. See the table in
-  the Known gaps section. Each round-trips its bytes exactly.
+- **Wrappers** (`pe::wrapper`): 43 typed wrappers, named as packetevents' without the
+  `WrapperPlayServer` / `WrapperPlayClient` prefix (`SetTitleText` for `WrapperPlayServerSetTitleText`).
+  Each round-trips its bytes exactly; every other packet is raw bytes.
 - **Registry** (`pe::Registry`): item slots, particles and entity data values need the game's registries to
   be measured. The glue asks Horizon's own codecs for them; the core alone knows the simple cases.
 
@@ -75,10 +79,18 @@ horizon-launcher native-build <path to this folder> --server-output <dir> --vers
 
 ## Known gaps
 
-What does not work yet on arismoko/horizon (each is marked `TODO(arismoko-api: ...)` in `src/lib.rs`):
+**This mod does not intercept packets yet.** A listener added with `add_listener` is never called
+(`PACKET_SOURCE_WIRED` is `false`). What Horizon's mod API lacks, exactly:
 
-- Outgoing packets cannot be watched and serverbound packets cannot be cancelled yet (the matching hooks do not exist), so listeners only see what the mod API reports.
-- Item slots and particles in packets are measured without registry protocol ids.
+- a server-side hook for the play packets the server sends a player (the API has only the client-side `client_packet` and `client_packet_send`);
+- a cancellable server-side hook for the packets a player sends;
+- sending a vanilla play packet to one player (only declared payload channels, `PlayerRef::send_payload`);
+- the item and particle registry protocol ids, so item slots and particles in packets are measured without them.
+
+Until then the mod is a packet codec (types, wrappers, listener dispatch) for other mods. Also missing compared with packetevents:
+`PacketSendEvent` / `PacketReceiveEvent` / user connect, login and disconnect events (one `PacketEvent` serves both
+directions), `ClientVersion` and `ServerVersion`, the `User` details beyond uuid, name and state, `PacketEvents.load/init`
+settings, and wrappers for the packets that have none (raw bytes only).
 
 ## Licence and credits
 
