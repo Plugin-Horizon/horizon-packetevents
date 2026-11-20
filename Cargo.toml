@@ -8,3 +8,12 @@ publish = false
 [dependencies]
 # The pinned SDK's API crate, fetched into .horizon/sdk/ by any `cargo horizon-mod` command.
 horizon-mod-api = { path = ".horizon/sdk/api/crates/horizon-mod-api" }
+
+[features]
+# The `serverbound_packet` hook of horizon-rust/horizon#18803 (not on main yet): the receive listeners
+# hear a player's custom payloads and a cancel drops one. Off by default: the SDK this mod is pinned to
+# does not have the hook yet.
+horizon_serverbound_packet = []
+# The `player_send_packet` call of horizon-rust/horizon#18021 (not on main yet): a vanilla play packet
+# sent to one player. Off by default for the same reason.
+horizon_player_send_packet = []
