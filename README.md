@@ -1,5 +1,9 @@
 # horizon-packetevents
 
+## Port status
+
+Compared with packetevents 2.x (be11149) (estimate): **16 %** of the original's commands, permissions, config keys, messages and features work today; **21 %** once our open Horizon PRs are merged; the engine and SDK figures are not estimated. Estimated count: ~55/~420 items. Status: not yet compiled after the 2026-11-20 round.
+
 > **Unofficial Rust port of packetevents for the Horizon server (https://github.com/arismoko/horizon). Not affiliated with or endorsed by the packetevents authors.**
 
 A packet API for [Horizon](https://github.com/arismoko/horizon) native mods, after
