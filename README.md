@@ -54,7 +54,8 @@ mod_packetevents::packet_events().add_listener(std::sync::Arc::new(Titles));
   them (`CHAT_MESSAGE`, `PLAYER_BLOCK_PLACEMENT` ...), with the 26.3 ids. The configuration and login enums
   use vanilla's names for some packets; packetevents' names for them (`LOGIN_SUCCESS`,
   `CONFIGURATION_END_ACK` ...) are associated constants of the same packet. Packets that 26.3 removed
-  (`SPAWN_LIVING_ENTITY`, `TITLE`, `WINDOW_CONFIRMATION` ...) and the handshake and status packets do not exist. `PacketType::lookup` finds one by
+  (`SPAWN_LIVING_ENTITY`, `TITLE`, `WINDOW_CONFIRMATION` ...) do not exist. The handshake and status packets are
+  `HandshakingClient` / `HandshakingServer` / `StatusClient` / `StatusServer`. `PacketType::lookup` finds one by
   state, side and id.
 - **Listeners** (`pe::event`): implement `PacketListener` with `priority()` (`Lowest` ... `Monitor`) and
   `on_packet_send` / `on_packet_receive`. Listeners run lowest priority first, and `Monitor` last.
@@ -79,18 +80,23 @@ horizon-launcher native-build <path to this folder> --server-output <dir> --vers
 
 ## Known gaps
 
-**This mod does not intercept packets yet.** A listener added with `add_listener` is never called
-(`PACKET_SOURCE_WIRED` is `false`). What Horizon's mod API lacks, exactly:
+**This mod intercepts almost nothing yet.** A listener added with `add_listener` is called only for the packets
+the feature flags below wire in; `PACKET_SOURCE_WIRED` is `false` and `RECEIVE_SOURCE_WIRED` is `true` only with
+`horizon_serverbound_packet`. What Horizon's mod API lacks on main, exactly:
 
 - a server-side hook for the play packets the server sends a player (the API has only the client-side `client_packet` and `client_packet_send`);
-- a cancellable server-side hook for the packets a player sends;
-- sending a vanilla play packet to one player (only declared payload channels, `PlayerRef::send_payload`);
+- a serverbound hook that carries every packet's body: the `serverbound_packet` hook of horizon-rust/horizon#18803 gives only the packet id, and a custom payload's channel and bytes. Behind the cargo feature `horizon_serverbound_packet` (off by default) the receive listeners hear custom payloads and a cancel drops them; no other packet reaches a listener, and a listener cannot rewrite a packet;
+- sending a vanilla play packet to one player: `player_send_packet` of horizon-rust/horizon#18021 is used behind the cargo feature `horizon_player_send_packet` (off by default), through the private `send_to_player`. Without the feature nothing is sent;
 - the item and particle registry protocol ids, so item slots and particles in packets are measured without them.
 
-Until then the mod is a packet codec (types, wrappers, listener dispatch) for other mods. Also missing compared with packetevents:
+Until those are on main the mod is a packet codec (types, wrappers, listener dispatch) for other mods. Also missing compared with packetevents:
 `PacketSendEvent` / `PacketReceiveEvent` / user connect, login and disconnect events (one `PacketEvent` serves both
 directions), `ClientVersion` and `ServerVersion`, the `User` details beyond uuid, name and state, `PacketEvents.load/init`
-settings, and wrappers for the packets that have none (raw bytes only).
+settings, wrappers for the packets that have none (raw bytes only; about 280 of the ~330 packetevents wrappers are missing),
+and the packetevents names of the play packets Horizon renamed (`PLAYER_INFO`, `TITLE`, ...; only the login and configuration names and `PlayClient::ANIMATION` are aliased).
+
+Player names: the mod keeps a uuid-to-name map, updated at each login and logout and rebuilt each tick, so `User::name`
+is set at the login and kept right after it.
 
 ## Licence and credits
 
