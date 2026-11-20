@@ -1224,6 +1224,11 @@ impl LoginClient {
     pub const LOGIN_SUCCESS_ACK: LoginClient = LoginClient::LOGIN_ACKNOWLEDGED;
 }
 
+impl PlayClient {
+    /// packetevents' name for the arm swing (`ServerboundSwingPacket` in Mojang's names, `Punch` here).
+    pub const ANIMATION: PlayClient = PlayClient::PUNCH;
+}
+
 #[cfg(test)]
 mod packetevents_names {
     use super::*;
@@ -1243,10 +1248,148 @@ mod packetevents_names {
         assert_eq!(LoginClient::ENCRYPTION_RESPONSE.id(), 1);
         assert_eq!(LoginClient::LOGIN_PLUGIN_RESPONSE.id(), 2);
         assert_eq!(LoginClient::LOGIN_SUCCESS_ACK.id(), 3);
+        assert_eq!(PlayClient::ANIMATION.id(), 46);
         assert_eq!(
             PacketType::lookup(ConnectionState::Login, true, 2),
             Some(PacketType::LoginServer(LoginServer::LOGIN_SUCCESS))
         );
+    }
+}
+
+/// Serverbound handshake packets (names and ids as packetevents has them; the legacy server list
+/// ping is not a VarInt packet, it is the single byte 0xFE that starts an old-style ping).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum HandshakingClient {
+    HANDSHAKE = 0,
+    LEGACY_SERVER_LIST_PING = 0xFE,
+}
+
+impl HandshakingClient {
+    /// Every packet of this state and side, in id order.
+    pub const ALL: &'static [HandshakingClient] = &[
+        HandshakingClient::HANDSHAKE,
+        HandshakingClient::LEGACY_SERVER_LIST_PING,
+    ];
+
+    /// The packet with this id, if the protocol has one.
+    pub fn from_id(id: i32) -> Option<HandshakingClient> {
+        match id {
+            0 => Some(HandshakingClient::HANDSHAKE),
+            0xFE => Some(HandshakingClient::LEGACY_SERVER_LIST_PING),
+            _ => None,
+        }
+    }
+
+    /// The packet's id.
+    pub fn id(self) -> i32 {
+        self as i32
+    }
+
+    /// The packet's name in lower case.
+    pub fn name(self) -> &'static str {
+        match self {
+            HandshakingClient::HANDSHAKE => "handshake",
+            HandshakingClient::LEGACY_SERVER_LIST_PING => "legacy_server_list_ping",
+        }
+    }
+}
+
+/// Clientbound legacy server list response (the answer to the 0xFE ping).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum HandshakingServer {
+    LEGACY_SERVER_LIST_RESPONSE = 0xFE,
+}
+
+impl HandshakingServer {
+    /// Every packet of this state and side, in id order.
+    pub const ALL: &'static [HandshakingServer] = &[HandshakingServer::LEGACY_SERVER_LIST_RESPONSE];
+
+    /// The packet with this id, if the protocol has one.
+    pub fn from_id(id: i32) -> Option<HandshakingServer> {
+        match id {
+            0xFE => Some(HandshakingServer::LEGACY_SERVER_LIST_RESPONSE),
+            _ => None,
+        }
+    }
+
+    /// The packet's id.
+    pub fn id(self) -> i32 {
+        self as i32
+    }
+
+    /// The packet's name in lower case.
+    pub fn name(self) -> &'static str {
+        match self {
+            HandshakingServer::LEGACY_SERVER_LIST_RESPONSE => "legacy_server_list_response",
+        }
+    }
+}
+
+/// Serverbound status packets (the server list ping).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StatusClient {
+    REQUEST = 0,
+    PING = 1,
+}
+
+impl StatusClient {
+    /// Every packet of this state and side, in id order.
+    pub const ALL: &'static [StatusClient] = &[StatusClient::REQUEST, StatusClient::PING];
+
+    /// The packet with this id, if the protocol has one.
+    pub fn from_id(id: i32) -> Option<StatusClient> {
+        match id {
+            0 => Some(StatusClient::REQUEST),
+            1 => Some(StatusClient::PING),
+            _ => None,
+        }
+    }
+
+    /// The packet's id.
+    pub fn id(self) -> i32 {
+        self as i32
+    }
+
+    /// The packet's name in lower case.
+    pub fn name(self) -> &'static str {
+        match self {
+            StatusClient::REQUEST => "request",
+            StatusClient::PING => "ping",
+        }
+    }
+}
+
+/// Clientbound status packets (the server list answer and its pong).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StatusServer {
+    RESPONSE = 0,
+    PONG = 1,
+}
+
+impl StatusServer {
+    /// Every packet of this state and side, in id order.
+    pub const ALL: &'static [StatusServer] = &[StatusServer::RESPONSE, StatusServer::PONG];
+
+    /// The packet with this id, if the protocol has one.
+    pub fn from_id(id: i32) -> Option<StatusServer> {
+        match id {
+            0 => Some(StatusServer::RESPONSE),
+            1 => Some(StatusServer::PONG),
+            _ => None,
+        }
+    }
+
+    /// The packet's id.
+    pub fn id(self) -> i32 {
+        self as i32
+    }
+
+    /// The packet's name in lower case.
+    pub fn name(self) -> &'static str {
+        match self {
+            StatusServer::RESPONSE => "response",
+            StatusServer::PONG => "pong",
+        }
     }
 }
 
@@ -1269,6 +1412,10 @@ pub enum PacketType {
     ConfigurationClient(ConfigurationClient),
     LoginServer(LoginServer),
     LoginClient(LoginClient),
+    HandshakingServer(HandshakingServer),
+    HandshakingClient(HandshakingClient),
+    StatusServer(StatusServer),
+    StatusClient(StatusClient),
 }
 
 impl PacketType {
@@ -1280,6 +1427,10 @@ impl PacketType {
                 ConnectionState::Configuration
             }
             PacketType::LoginServer(_) | PacketType::LoginClient(_) => ConnectionState::Login,
+            PacketType::HandshakingServer(_) | PacketType::HandshakingClient(_) => {
+                ConnectionState::Handshaking
+            }
+            PacketType::StatusServer(_) | PacketType::StatusClient(_) => ConnectionState::Status,
         }
     }
 
@@ -1290,6 +1441,8 @@ impl PacketType {
             PacketType::PlayServer(_)
                 | PacketType::ConfigurationServer(_)
                 | PacketType::LoginServer(_)
+                | PacketType::HandshakingServer(_)
+                | PacketType::StatusServer(_)
         )
     }
 
@@ -1302,6 +1455,10 @@ impl PacketType {
             PacketType::ConfigurationClient(p) => p.id(),
             PacketType::LoginServer(p) => p.id(),
             PacketType::LoginClient(p) => p.id(),
+            PacketType::HandshakingServer(p) => p.id(),
+            PacketType::HandshakingClient(p) => p.id(),
+            PacketType::StatusServer(p) => p.id(),
+            PacketType::StatusClient(p) => p.id(),
         }
     }
 
@@ -1314,6 +1471,10 @@ impl PacketType {
             PacketType::ConfigurationClient(p) => p.name(),
             PacketType::LoginServer(p) => p.name(),
             PacketType::LoginClient(p) => p.name(),
+            PacketType::HandshakingServer(p) => p.name(),
+            PacketType::HandshakingClient(p) => p.name(),
+            PacketType::StatusServer(p) => p.name(),
+            PacketType::StatusClient(p) => p.name(),
         }
     }
 
@@ -1332,7 +1493,14 @@ impl PacketType {
             (ConnectionState::Login, false) => {
                 LoginClient::from_id(id).map(PacketType::LoginClient)
             }
-            _ => None,
+            (ConnectionState::Handshaking, true) => {
+                HandshakingServer::from_id(id).map(PacketType::HandshakingServer)
+            }
+            (ConnectionState::Handshaking, false) => {
+                HandshakingClient::from_id(id).map(PacketType::HandshakingClient)
+            }
+            (ConnectionState::Status, true) => StatusServer::from_id(id).map(PacketType::StatusServer),
+            (ConnectionState::Status, false) => StatusClient::from_id(id).map(PacketType::StatusClient),
         }
     }
 }

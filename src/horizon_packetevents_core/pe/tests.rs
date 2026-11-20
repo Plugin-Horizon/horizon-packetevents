@@ -9,7 +9,8 @@ use super::event::{PacketEvent, PacketListener, Priority, User};
 use super::manager::{Outcome, PacketEvents};
 use super::nbt::Tag;
 use super::packet_type::{
-    ConnectionState, LoginClient, LoginServer, PacketType, PlayClient, PlayServer,
+    ConnectionState, HandshakingClient, HandshakingServer, LoginClient, LoginServer, PacketType,
+    PlayClient, PlayServer, StatusClient, StatusServer,
 };
 use super::wrapper::clientbound::*;
 use super::wrapper::serverbound as sb;
@@ -466,6 +467,44 @@ fn packet_type_lookup_uses_state_and_side() {
         PacketType::PlayClient(PlayClient::KEEP_ALIVE).state(),
         ConnectionState::Play
     );
+}
+
+#[test]
+fn handshaking_and_status_packets_have_their_ids() {
+    assert_eq!(
+        PacketType::lookup(ConnectionState::Handshaking, false, 0),
+        Some(PacketType::HandshakingClient(HandshakingClient::HANDSHAKE))
+    );
+    assert_eq!(
+        PacketType::lookup(ConnectionState::Handshaking, false, 0xFE),
+        Some(PacketType::HandshakingClient(
+            HandshakingClient::LEGACY_SERVER_LIST_PING
+        ))
+    );
+    assert_eq!(
+        PacketType::lookup(ConnectionState::Handshaking, true, 0xFE),
+        Some(PacketType::HandshakingServer(
+            HandshakingServer::LEGACY_SERVER_LIST_RESPONSE
+        ))
+    );
+    assert_eq!(
+        PacketType::lookup(ConnectionState::Status, false, 1),
+        Some(PacketType::StatusClient(StatusClient::PING))
+    );
+    assert_eq!(
+        PacketType::lookup(ConnectionState::Status, true, 1),
+        Some(PacketType::StatusServer(StatusServer::PONG))
+    );
+    assert_eq!(PacketType::lookup(ConnectionState::Status, true, 2), None);
+    assert_eq!(
+        PacketType::StatusServer(StatusServer::RESPONSE).state(),
+        ConnectionState::Status
+    );
+    assert_eq!(
+        PacketType::HandshakingClient(HandshakingClient::HANDSHAKE).name(),
+        "handshake"
+    );
+    assert!(!PacketType::StatusClient(StatusClient::REQUEST).is_server_side());
 }
 
 // Wrappers: round trips ------------------------------------------------------------------------
